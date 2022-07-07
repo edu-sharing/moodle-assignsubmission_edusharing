@@ -139,11 +139,11 @@ class assign_submission_edusharing extends assign_submission_plugin {
                                         window.win.close();
                                         
                                         let filename = node.properties['cm:name'][0];
-                                        let extension = filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2);
-                                                                                
+                                        let extension = filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
+                                                 
                                         if(!extension || extension.length === 0){
                                             const mimeType = node.mimetype;
-                                            console.log('mimetype: ' + mimeType);
+                                            //console.log('mimetype: ' + mimeType);
                                             
                                             const typeMap = {
                                                 'image/jpeg': 'jpeg',
