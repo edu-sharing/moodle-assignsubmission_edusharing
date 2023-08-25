@@ -23,10 +23,8 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-$plugin->component = 'assignsubmission_edusharing';
-$plugin->version = 2022060708; //YYYYMMDDXX
-$plugin->requires = 2015051100; //YYYYMMDDXX
-$plugin->maturity = MATURITY_STABLE;
-$plugin->dependencies = array(
-    'mod_edusharing'  => 2018072701,
-);
+$plugin->component    = 'assignsubmission_edusharing';
+$plugin->version      = 2023080100; //YYYYMMDDXX
+$plugin->requires     = 2022041909; //YYYYMMDDXX
+$plugin->maturity     = MATURITY_STABLE;
+$plugin->dependencies = ['mod_edusharing' => 2023080100];
