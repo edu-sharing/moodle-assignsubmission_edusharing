@@ -26,6 +26,7 @@
  */
 
 use mod_edusharing\EduSharingService;
+use mod_edusharing\UtilityFunctions;
 
 defined('MOODLE_INTERNAL') || die();
 global $CFG;
@@ -146,7 +147,7 @@ class assign_submission_edusharing extends assign_submission_plugin
             return true;
         };
 
-        $mform->addElement('text', 'edu_filename', get_string('edu_filename', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')));
+        $mform->addElement('text', 'edu_filename', get_string('edu_filename', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
         $mform->setType('edu_filename', PARAM_RAW_TRIMMED);
         $mform->addRule('edu_filename', get_string('edu_extension_error', 'assignsubmission_edusharing'), 'callback', $checkExtension, 'server', false, true);
 
@@ -158,7 +159,6 @@ class assign_submission_edusharing extends assign_submission_plugin
                                 window.addEventListener('message', function handleRepo(event) {
                                     if (event.data.event == 'APPLY_NODE') {
                                         const node = event.data.data;
-                                        //window.console.log(node);
                                         window.win.close();
                                         
                                         let filename = node.properties['cm:name'][0];
@@ -166,7 +166,6 @@ class assign_submission_edusharing extends assign_submission_plugin
                                                  
                                         if(!extension || extension.length === 0){
                                             const mimeType = node.mimetype;
-                                            //console.log('mimetype: ' + mimeType);
                                             
                                             const typeMap = {
                                                 'image/jpeg': 'jpeg',
@@ -323,10 +322,13 @@ class assign_submission_edusharing extends assign_submission_plugin
             'filename'  => $data->edu_filename,                     // Any filename.
             'maxfiles'  => $this->get_config('edumaxfilesubmissions'),
         ];
-        $fs       = get_file_storage();
-        // Create a new file containing the text 'hello world'.
+        $fs          = get_file_storage();
+        $utils       = new UtilityFunctions();
+        $internalUrl = $utils->getInternalUrl();
+        if (!empty($internalUrl)) {
+            $file_url = str_replace(rtrim(get_config('edusharing', 'application_cc_gui_url'), '/'), $internalUrl, $file_url);
+        }
         $fs->create_file_from_url($fileinfo, $file_url);
-
 
         $fs    = get_file_storage();
         $files = $fs->get_area_files($this->assignment->get_context()->id,
