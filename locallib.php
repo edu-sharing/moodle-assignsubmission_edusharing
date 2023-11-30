@@ -124,7 +124,7 @@ class assign_submission_edusharing extends assign_submission_plugin
 
         try {
             $service = new EduSharingService();
-            $ticket  = $service->getTicket();
+            $ticket  = $service->get_ticket();
         } catch (Exception $e) {
             trigger_error($e->getMessage(), E_USER_WARNING);
             return false;
@@ -297,7 +297,7 @@ class assign_submission_edusharing extends assign_submission_plugin
 
         try {
             $service = new EduSharingService();
-            $ticket  = $service->getTicket();
+            $ticket  = $service->get_ticket();
         } catch (Exception $e) {
             trigger_error($e->getMessage(), E_USER_WARNING);
             return false;
@@ -324,7 +324,7 @@ class assign_submission_edusharing extends assign_submission_plugin
         ];
         $fs          = get_file_storage();
         $utils       = new UtilityFunctions();
-        $internalUrl = $utils->getInternalUrl();
+        $internalUrl = $utils->get_internal_url();
         if (!empty($internalUrl)) {
             $file_url = str_replace(rtrim(get_config('edusharing', 'application_cc_gui_url'), '/'), $internalUrl, $file_url);
         }
