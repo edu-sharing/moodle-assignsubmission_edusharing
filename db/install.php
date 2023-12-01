@@ -21,8 +21,6 @@
  * @copyright  metaVentis GmbH — http://metaventis.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-defined('MOODLE_INTERNAL') || die();
-
 
 /**
  * Code run after the assignsubmission_edusharing module database tables have been created.
@@ -30,8 +28,5 @@ defined('MOODLE_INTERNAL') || die();
  * @return bool
  */
 function xmldb_assignsubmission_edusharing_install() {
-    global $CFG;
-
-
     return true;
 }

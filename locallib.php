@@ -41,8 +41,7 @@ define('ASSIGNSUBMISSION_EDUSHARING_FILEAREA', 'submission_edusharing');
  * @copyright  metaVentis GmbH — http://metaventis.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class assign_submission_edusharing extends assign_submission_plugin
-{
+class assign_submission_edusharing extends assign_submission_plugin {
 
     /**
      * Get the name of the online text submission plugin
@@ -60,13 +59,13 @@ class assign_submission_edusharing extends assign_submission_plugin
     /**
      * Function get_file_submission
      *
-     * @param $submissionId
+     * @param mixed $submissionid
      * @return false|mixed|stdClass
      * @throws dml_exception
      */
-    private function get_file_submission($submissionId): mixed {
+    private function get_file_submission($submissionid): mixed {
         global $DB;
-        return $DB->get_record('assignsubmission_edusharing', ['submission' => $submissionId]);
+        return $DB->get_record('assignsubmission_edusharing', ['submission' => $submissionid]);
     }
 
 
@@ -79,9 +78,9 @@ class assign_submission_edusharing extends assign_submission_plugin
     public function get_settings(MoodleQuickForm $mform): void {
         try {
             if ($this->assignment->has_instance()) {
-                $defaultMaxFileSubmissions = $this->get_config('edumaxfilesubmissions');
+                $defaultmaxfilesubmissions = $this->get_config('edumaxfilesubmissions');
             } else {
-                $defaultMaxFileSubmissions = get_config('assignsubmission_edusharing', 'maxfiles');
+                $defaultmaxfilesubmissions = get_config('assignsubmission_edusharing', 'maxfiles');
             }
 
             $options = [];
@@ -89,18 +88,18 @@ class assign_submission_edusharing extends assign_submission_plugin
                 $options[$i] = $i;
             }
 
-            $name = get_string('maxfilessubmission', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname'));
+            $name = get_string('maxfilessubmission', 'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname'));
             $mform->addElement('select', 'assignsubmission_edusharing_maxfiles', $name, $options);
             $mform->addHelpButton('assignsubmission_edusharing_maxfiles',
                 'maxfilessubmission',
                 'assignsubmission_edusharing', get_config('edusharing', 'application_appname'));
         } catch (Exception $exception) {
-            error_log($exception->getMessage());
+            debugging($exception->getMessage());
             return;
         }
-        $mform->setDefault('assignsubmission_edusharing_maxfiles', $defaultMaxFileSubmissions);
+        $mform->setDefault('assignsubmission_edusharing_maxfiles', $defaultmaxfilesubmissions);
         $mform->hideIf('assignsubmission_edusharing_maxfiles', 'assignsubmission_edusharing_enabled', 'notchecked');
-
     }
 
     /**
@@ -115,9 +114,17 @@ class assign_submission_edusharing extends assign_submission_plugin
         return true;
     }
 
+    /**
+     * Function get_form_elements
+     *
+     * @param mixed $submission
+     * @param MoodleQuickForm $mform
+     * @param stdClass $data
+     * @return bool
+     * @throws coding_exception
+     * @throws dml_exception
+     */
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
-        global $CFG;
-
         if ($this->get_config('edumaxfilesubmissions') <= 0) {
             return false;
         }
@@ -130,43 +137,59 @@ class assign_submission_edusharing extends assign_submission_plugin
             return false;
         }
 
-        $mform->addElement('static', 'description', get_string('description', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')),
-            '');
+        $mform->addElement('static', 'description',
+            get_string('description', 'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')), '');
 
-        // object-uri
-        $mform->addElement('text', 'edu_url', get_string('edu_url', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
+        $mform->addElement('text', 'edu_url',
+            get_string('edu_url', 'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
         $mform->setType('edu_url', PARAM_RAW_TRIMMED);
         $mform->addRule('edu_url', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
 
-        $checkExtension = function ($val) {
-            $file_parts = pathinfo($val);
-            if (empty($file_parts["extension"])) {
-                //error_log('no extension');
+        $checkextension = function ($val) {
+            $fileparts = pathinfo($val);
+            if (empty($fileparts["extension"])) {
                 return false;
             }
             return true;
         };
 
-        $mform->addElement('text', 'edu_filename', get_string('edu_filename', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
+        $mform->addElement('text', 'edu_filename',
+            get_string('edu_filename', 'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
         $mform->setType('edu_filename', PARAM_RAW_TRIMMED);
-        $mform->addRule('edu_filename', get_string('edu_extension_error', 'assignsubmission_edusharing'), 'callback', $checkExtension, 'server', false, true);
+        $mform->addRule('edu_filename',
+            get_string('edu_extension_error', 'assignsubmission_edusharing'),
+            'callback',
+            $checkextension,
+            'server',
+            false,
+            true
+        );
 
-
-        $repoSearch       = trim(get_config('edusharing', 'application_cc_gui_url'), '/') . '/components/search?&applyDirectories=true&reurl=WINDOW&ticket=' . $ticket;
-        $searchbutton     = $mform->addElement('button', 'searchbutton', get_string('searchrec', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')));
-        $repoOnClick      = "
+        $reposearch       = trim(
+            get_config('edusharing', 'application_cc_gui_url'), '/'
+            ) . '/components/search?&applyDirectories=true&reurl=WINDOW&ticket=' . $ticket;
+        $searchbutton     = $mform->addElement(
+            'button',
+            'searchbutton',
+            get_string('searchrec',
+                'assignsubmission_edusharing',
+                get_config('edusharing',
+                    'application_appname')
+            )
+        );
+        $repoonclick      = "
                             function openRepo(){
                                 window.addEventListener('message', function handleRepo(event) {
                                     if (event.data.event == 'APPLY_NODE') {
                                         const node = event.data.data;
                                         window.win.close();
-                                        
                                         let filename = node.properties['cm:name'][0];
                                         let extension = filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 2);
-                                                 
                                         if(!extension || extension.length === 0){
                                             const mimeType = node.mimetype;
-                                            
                                             const typeMap = {
                                                 'image/jpeg': 'jpeg',
                                                 'image/png': 'png',
@@ -177,14 +200,12 @@ class assign_submission_edusharing extends assign_submission_plugin
                                                 'image/photoshop': 'psd',
                                                 'image/xcf': 'xcf',
                                                 'image/pcx': 'pcx',
-                                                
                                                 'video/x-msvideo': 'avi',
                                                 'video/mpeg': 'mpg',
                                                 'video/x-flash': 'flv',
                                                 'video/x-ms-wmv': 'wmv',
                                                 'video/mp4': 'mp4',
                                                 'video/3gpp': '3gp',
-                                                
                                                 'audio/wav': 'wav',
                                                 'audio/mpeg': 'mp3',
                                                 'audio/mid': 'mid',
@@ -194,7 +215,6 @@ class assign_submission_edusharing extends assign_submission_plugin
                                                 'audio/voxware': 'vox',
                                                 'audio/x-ms-wma': 'wma',
                                                 'audio/x-pn-realaudi': 'ram',
-                                                
                                                 'application/vnd.oasis.opendocument.text': 'odt',
                                                 'application/vnd.oasis.opendocument.text-template': 'ott',
                                                 'application/vnd.oasis.opendocument.text-web': 'oth',
@@ -210,9 +230,7 @@ class assign_submission_edusharing extends assign_submission_plugin
                                                 'application/vnd.oasis.opendocument.database': 'odb',
                                                 'application/vnd.oasis.opendocument.image': 'odi',
                                                 'application/vnd.oasis.opendocument.image': 'odi',
-                                                
                                                 'application/vnd.ms-powerpoint': 'ppt',
-                                                
                                                 'application/msword': 'doc',
                                                 'application/vnd.ms-word.document.macroEnabled.12': 'docm',
                                                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
@@ -227,44 +245,48 @@ class assign_submission_edusharing extends assign_submission_plugin
                                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
                                                 'application/vnd.ms-xpsdocument': 'xps',
                                                 'application/vnd.ms-excel': 'xls',
-                                                
                                                 'text/plain': 'txt',
                                                 'application/pdf': 'pdf',
                                                 'application/zip': 'zip',
                                                 'application/epub+zip': 'epub',
                                                 'text/xml': 'xml',
-                                                
                                                 'application/vnd.apple.pages': 'pages',
                                                 'application/vnd.apple.keynote': 'keynote',
                                                 'application/vnd.apple.numbers': 'numbers',
-                                            };                                             
-                                            
+                                            };
                                             if(typeMap[mimeType]){
                                                 filename += '.' + typeMap[mimeType];
-                                            }                                            
-                                            
+                                            }
                                         }
-                                        
                                         window.document.getElementById('id_edu_url').value = node.downloadUrl;
                                         window.document.getElementById('id_edu_filename').value = filename;
-                                        
                                         window.removeEventListener('message', handleRepo, false );
-                                    }                                    
+                                    }
                                 }, false);
-                                window.win = window.open('" . $repoSearch . "');                                                          
+                                window.win = window.open('" . $reposearch . "');
                             }
                             openRepo();
                         ";
-        $buttonattributes = ['title' => get_string('uploadrec', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname')), 'onclick' => $repoOnClick];
+        $buttonattributes = [
+            'title' => get_string('uploadrec', 'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')),
+            'onclick' => $repoonclick,
+        ];
         $searchbutton->updateAttributes($buttonattributes);
 
         return true;
     }
 
+    /**
+     * Function get_file_options
+     *
+     * @return array
+     */
     private function get_file_options() {
         $fileoptions = ['subdirs'      => 1,
                         'maxfiles'     => $this->get_config('edumaxfilesubmissions'),
-                        'return_types' => (FILE_EXTERNAL | FILE_REFERENCE)];
+                        'return_types' => (FILE_EXTERNAL | FILE_REFERENCE),
+            ];
 
         return $fileoptions;
     }
@@ -275,6 +297,7 @@ class assign_submission_edusharing extends assign_submission_plugin
      * @param int $submissionid
      * @param string $area
      * @return int
+     * @throws coding_exception
      */
     private function count_files($submissionid, $area) {
         $fs    = get_file_storage();
@@ -283,11 +306,22 @@ class assign_submission_edusharing extends assign_submission_plugin
             $area,
             $submissionid,
             'id',
-            false);
+            false
+        );
 
         return count($files);
     }
 
+    /**
+     * Function save
+     *
+     * @param stdClass $submission
+     * @param stdClass $data
+     * @return bool
+     * @throws coding_exception
+     * @throws dml_exception
+     * @throws file_exception
+     */
     public function save(stdClass $submission, stdClass $data) {
         global $USER, $DB;
 
@@ -305,12 +339,11 @@ class assign_submission_edusharing extends assign_submission_plugin
 
         $edusharingsubmission = $this->get_file_submission($submission->id);
 
-
-        $file_url = $data->edu_url;
-        if (strpos($file_url, '?')) {
-            $file_url .= '&ticket=' . $ticket;
+        $fileurl = $data->edu_url;
+        if (strpos($fileurl, '?')) {
+            $fileurl .= '&ticket=' . $ticket;
         } else {
-            $file_url .= '?ticket=' . $ticket;
+            $fileurl .= '?ticket=' . $ticket;
         }
 
         $fileinfo = [
@@ -324,11 +357,11 @@ class assign_submission_edusharing extends assign_submission_plugin
         ];
         $fs          = get_file_storage();
         $utils       = new UtilityFunctions();
-        $internalUrl = $utils->get_internal_url();
-        if (!empty($internalUrl)) {
-            $file_url = str_replace(rtrim(get_config('edusharing', 'application_cc_gui_url'), '/'), $internalUrl, $file_url);
+        $internalurl = $utils->get_internal_url();
+        if (!empty($internalurl)) {
+            $fileurl = str_replace(rtrim(get_config('edusharing', 'application_cc_gui_url'), '/'), $internalurl, $fileurl);
         }
-        $fs->create_file_from_url($fileinfo, $file_url);
+        $fs->create_file_from_url($fileinfo, $fileurl);
 
         $fs    = get_file_storage();
         $files = $fs->get_area_files($this->assignment->get_context()->id,
@@ -346,8 +379,8 @@ class assign_submission_edusharing extends assign_submission_plugin
             'objectid' => $submission->id,
             'other'    => [
                 'content'        => '',
-                'pathnamehashes' => array_keys($files)
-            ]
+                'pathnamehashes' => array_keys($files),
+            ],
         ];
         if (!empty($submission->userid) && ($submission->userid != $USER->id)) {
             $params['relateduserid'] = $submission->userid;
@@ -378,7 +411,7 @@ class assign_submission_edusharing extends assign_submission_plugin
             'submissionstatus'    => $submission->status,
             'filesubmissioncount' => $count,
             'groupid'             => $groupid,
-            'groupname'           => $groupname
+            'groupname'           => $groupname,
         ];
 
         if ($edusharingsubmission) {
@@ -414,6 +447,7 @@ class assign_submission_edusharing extends assign_submission_plugin
      *
      * @param stdClass $submission The submission
      * @return boolean
+     * @throws dml_exception
      */
     public function remove(stdClass $submission) {
         global $DB;
@@ -439,6 +473,7 @@ class assign_submission_edusharing extends assign_submission_plugin
      * @param stdClass $submission The submission
      * @param stdClass $user The user record - unused
      * @return array - return an array of files indexed by filename
+     * @throws coding_exception
      */
     public function get_files(stdClass $submission, stdClass $user) {
         $result = [];
@@ -468,6 +503,7 @@ class assign_submission_edusharing extends assign_submission_plugin
      * @param stdClass $submission
      * @param bool $showviewlink Set this to true if the list of files is long
      * @return string
+     * @throws coding_exception
      */
     public function view_summary(stdClass $submission, &$showviewlink) {
         $count = $this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA);
@@ -499,6 +535,7 @@ class assign_submission_edusharing extends assign_submission_plugin
      * The assignment has been deleted - cleanup
      *
      * @return bool
+     * @throws dml_exception
      */
     public function delete_instance() {
         global $DB;
@@ -512,6 +549,7 @@ class assign_submission_edusharing extends assign_submission_plugin
     /**
      * Return true if there are no submission files
      * @param stdClass $submission
+     * @throws coding_exception
      */
     public function is_empty(stdClass $submission) {
         return $this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) == 0;
@@ -543,8 +581,14 @@ class assign_submission_edusharing extends assign_submission_plugin
     /**
      * Copy the student's submission from a previous submission. Used when a student opts to base their resubmission
      * on the last submission.
+     *
      * @param stdClass $sourcesubmission
      * @param stdClass $destsubmission
+     * @return true
+     * @throws coding_exception
+     * @throws dml_exception
+     * @throws file_exception
+     * @throws stored_file_creation_exception
      */
     public function copy_submission(stdClass $sourcesubmission, stdClass $destsubmission) {
         global $DB;
