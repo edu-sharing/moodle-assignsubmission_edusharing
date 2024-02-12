@@ -27,6 +27,7 @@ $settings->add(new admin_setting_configcheckbox('assignsubmission_edusharing/def
     new lang_string('default', 'assignsubmission_edusharing'),
     new lang_string('default_help', 'assignsubmission_edusharing'), 0));
 
-$settings->add(new admin_setting_configtext('assignsubmission_edusharing/maxfiles',
-    new lang_string('maxfiles', 'assignsubmission_edusharing'),
-    new lang_string('maxfiles_help', 'assignsubmission_edusharing'), 8, PARAM_INT));
+// This will be needed in the future when implement multiple es-objects per submission
+//$settings->add(new admin_setting_configtext('assignsubmission_edusharing/maxfiles',
+//    new lang_string('maxfiles', 'assignsubmission_edusharing'),
+//    new lang_string('maxfiles_help', 'assignsubmission_edusharing'), 8, PARAM_INT));

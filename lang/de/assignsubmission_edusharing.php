@@ -35,10 +35,10 @@ $string['maxfilessubmission'] = '{$a}: Maximale Anzahl an Dateien';
 $string['maxfilessubmission_help'] = 'Wenn {$a} Abgaben aktiviert sind, können Lernende so viele Dateien pro Abgabe hochladen.';
 $string['edu_url'] = '{$a} URL';
 $string['edu_filename'] = '{$a} Dateiname';
-$string['searchrec'] = 'Suche im {$a} Repositorium ...';
-$string['uploadrec'] = 'Suche im {$a} Repositorium ...';
+$string['searchrec'] = 'Suche im {$a}-Repositorium ...';
+$string['uploadrec'] = 'Suche im {$a}-Repositorium ...';
 $string['edu_extension_error'] = 'Bitte fügen sie an den Dateinamen die Dateiendung.';
 $string['description'] = '{$a} Abgabe';
 $string['descriptionofsubmission'] = 'Durchsuchen sie das edu-sharing Repositorium für Ihre Abgabe...';
 $string['eventassessableuploaded'] = 'Eine {$a} Datei wurde abgegeben';
-
+$string['remove_es_object'] = 'Edu-Sharing-Objekt entfernen';

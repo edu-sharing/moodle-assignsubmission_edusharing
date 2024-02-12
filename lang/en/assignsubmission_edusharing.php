@@ -41,4 +41,4 @@ $string['edu_extension_error'] = 'Please add a file-extension';
 $string['description'] = '{$a} Abgabe';
 $string['descriptionofsubmission'] = 'Search the edu-sharing repository for your content...';
 $string['eventassessableuploaded'] = 'A {$a} file has been uploaded.';
-
+$string['remove_es_object'] = 'Remove edu-sharing object';

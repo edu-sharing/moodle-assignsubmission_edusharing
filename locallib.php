@@ -76,6 +76,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return void
      */
     public function get_settings(MoodleQuickForm $mform): void {
+        return;
         try {
             if ($this->assignment->has_instance()) {
                 $defaultmaxfilesubmissions = $this->get_config('edumaxfilesubmissions');
@@ -109,7 +110,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return bool
      */
     public function save_settings(stdClass $formdata): bool {
-        $this->set_config('edumaxfilesubmissions', $formdata->assignsubmission_edusharing_maxfiles);
+        //$this->set_config('edumaxfilesubmissions', $formdata->assignsubmission_edusharing_maxfiles);
 
         return true;
     }
@@ -125,10 +126,20 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @throws dml_exception
      */
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
-        if ($this->get_config('edumaxfilesubmissions') <= 0) {
-            return false;
+        // It's a assign_submission
+        //if ($this->get_config('edumaxfilesubmissions') <= 0) {
+        //    return false;
+        //}
+        $existingfilename = '';
+        // if there is one file we are in edit mode!
+        if ($this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) > 0) {
+            $allesfiles = $this->get_es_files($submission);
+            $existingfilename = array_keys($allesfiles)[0];
+            $lastSlash = strrpos($existingfilename, '/');
+            if ($lastSlash !== false) {
+                $existingfilename = substr($existingfilename, $lastSlash + 1);
+            }
         }
-
         try {
             $service = new EduSharingService();
             $ticket  = $service->get_ticket();
@@ -141,12 +152,16 @@ class assign_submission_edusharing extends assign_submission_plugin {
             get_string('description', 'assignsubmission_edusharing',
                 get_config('edusharing', 'application_appname')), '');
 
+        $mform->addElement('text', 'edu_edit_mode', 'edit_mode', ['readonly' => 'true']);
+        $mform->setType('edu_edit_mode', PARAM_RAW_TRIMMED);
+        // Toggle edit mode
+        $mform->setDefault('edu_edit_mode', $existingfilename !== "" ? 1 : 0);
+
         $mform->addElement('text', 'edu_url',
             get_string('edu_url', 'assignsubmission_edusharing',
                 get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
         $mform->setType('edu_url', PARAM_RAW_TRIMMED);
         $mform->addRule('edu_url', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
-
         $checkextension = function ($val) {
             $fileparts = pathinfo($val);
             if (empty($fileparts["extension"])) {
@@ -167,10 +182,13 @@ class assign_submission_edusharing extends assign_submission_plugin {
             false,
             true
         );
+        if ($existingfilename !== "") {
+            $mform->setDefault('edu_filename', $existingfilename);
+        }
 
         $reposearch       = trim(
             get_config('edusharing', 'application_cc_gui_url'), '/'
-            ) . '/components/search?&applyDirectories=true&reurl=WINDOW&ticket=' . $ticket;
+            ) . '/components/workspace?&applyDirectories=true&reurl=WINDOW&ticket=' . $ticket;
         $searchbutton     = $mform->addElement(
             'button',
             'searchbutton',
@@ -274,6 +292,16 @@ class assign_submission_edusharing extends assign_submission_plugin {
         ];
         $searchbutton->updateAttributes($buttonattributes);
 
+        // For edit mode we add a remove es-item button
+        if ($existingfilename !== "") {
+            $removeButton = $mform->addElement('button', 'eduRemoveButton',
+                get_string('remove_es_object', 'assignsubmission_edusharing')
+            );
+            $removeOnClick = "window.document.getElementById('id_edu_filename').value = ''; 
+                window.document.getElementById('id_edu_url').value = '';";
+            $removeButton->updateAttributes(['onclick' => $removeOnClick]);
+        }
+
         return true;
     }
 
@@ -284,7 +312,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
      */
     private function get_file_options() {
         $fileoptions = ['subdirs'      => 1,
-                        'maxfiles'     => $this->get_config('edumaxfilesubmissions'),
+                        'maxfiles'     => 1, //$this->get_config('edumaxfilesubmissions'),
                         'return_types' => (FILE_EXTERNAL | FILE_REFERENCE),
             ];
 
@@ -325,8 +353,18 @@ class assign_submission_edusharing extends assign_submission_plugin {
     public function save(stdClass $submission, stdClass $data) {
         global $USER, $DB;
 
+        // No edu url? This means there is no edu-object to be submitted.
+        // In this case, we do not want an error message
         if (empty($data->edu_url)) {
-            return false;
+            if ((int)$data->edu_edit_mode === 1) {
+                $this->remove($submission);
+            }
+            return true;
+        }
+        // If we are in edit mode and the edu_url is not empty, an object from the repo was added.
+        // We have to delete the old one.
+        if ((int)$data->edu_edit_mode === 1) {
+            $this->remove($submission);
         }
 
         try {
@@ -346,6 +384,8 @@ class assign_submission_edusharing extends assign_submission_plugin {
             $fileurl .= '?ticket=' . $ticket;
         }
 
+        $fileurl .= '&onlyDownloadable=true';
+
         $fileinfo = [
             'contextid' => $this->assignment->get_context()->id,    // ID of the context.
             'component' => 'assignsubmission_edusharing',           // Your component name.
@@ -353,7 +393,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
             'itemid'    => $submission->id,                         // Usually = ID of row in table.
             'filepath'  => '/',                                     // Any path beginning and ending in /.
             'filename'  => $data->edu_filename,                     // Any filename.
-            'maxfiles'  => $this->get_config('edumaxfilesubmissions'),
+            'maxfiles'  => 1 //$this->get_config('edumaxfilesubmissions'),
         ];
         $fs          = get_file_storage();
         $utils       = new UtilityFunctions();
@@ -476,6 +516,17 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @throws coding_exception
      */
     public function get_files(stdClass $submission, stdClass $user) {
+        return $this->get_es_files($submission);
+    }
+
+    /**
+     * Get all area files for edu-sharing
+     *
+     * @param stdClass $submission
+     * @return array
+     * @throws coding_exception
+     */
+    private function get_es_files(stdClass $submission): Array {
         $result = [];
         $fs     = get_file_storage();
 
@@ -507,7 +558,6 @@ class assign_submission_edusharing extends assign_submission_plugin {
      */
     public function view_summary(stdClass $submission, &$showviewlink) {
         $count = $this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA);
-
         // Show we show a link to view all files for this plugin?
         $showviewlink = $count > ASSIGNSUBMISSION_EDUSHARING_MAXSUMMARYFILES;
         if ($count <= ASSIGNSUBMISSION_EDUSHARING_MAXSUMMARYFILES) {
