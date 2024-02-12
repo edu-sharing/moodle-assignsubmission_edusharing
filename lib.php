@@ -21,7 +21,6 @@
  * @copyright 2012 NetSpot {@link http://www.netspot.com.au}
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Serves assignment submissions and other files.
@@ -34,6 +33,10 @@ defined('MOODLE_INTERNAL') || die();
  * @param bool $forcedownload
  * @param array $options - List of options affecting file serving.
  * @return bool false if file not found, does not return if found - just send the file
+ * @throws coding_exception
+ * @throws dml_exception
+ * @throws moodle_exception
+ * @throws require_login_exception
  */
 function assignsubmission_edusharing_pluginfile($course,
                                           $cm,
@@ -41,7 +44,7 @@ function assignsubmission_edusharing_pluginfile($course,
                                           $filearea,
                                           $args,
                                           $forcedownload,
-                                          array $options=array()) {
+                                          array $options= []) {
     global $DB, $CFG;
 
     if ($context->contextlevel != CONTEXT_MODULE) {
@@ -51,7 +54,7 @@ function assignsubmission_edusharing_pluginfile($course,
     require_login($course, false, $cm);
     $itemid = (int)array_shift($args);
     $record = $DB->get_record('assign_submission',
-                              array('id'=>$itemid),
+                              ['id' => $itemid],
                               'userid, assignment, groupid',
                               MUST_EXIST);
     $userid = $record->userid;

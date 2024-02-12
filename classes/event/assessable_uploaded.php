@@ -24,7 +24,11 @@
 
 namespace assignsubmission_edusharing\event;
 
-defined('MOODLE_INTERNAL') || die();
+use coding_exception;
+use dml_exception;
+use moodle_exception;
+use moodle_url;
+use stdClass;
 
 /**
  * The assignsubmission_edusharing assessable uploaded event class.
@@ -41,7 +45,7 @@ class assessable_uploaded extends \core\event\assessable_uploaded {
      *
      * @var array
      */
-    protected $legacyfiles = array();
+    protected $legacyfiles = [];
 
     /**
      * Returns description of what happened.
@@ -54,50 +58,28 @@ class assessable_uploaded extends \core\event\assessable_uploaded {
     }
 
     /**
-     * Legacy event data if get_legacy_eventname() is not empty.
-     *
-     * @return \stdClass
-     */
-    protected function get_legacy_eventdata() {
-        $eventdata = new \stdClass();
-        $eventdata->modulename = 'assign';
-        $eventdata->cmid = $this->contextinstanceid;
-        $eventdata->itemid = $this->objectid;
-        $eventdata->courseid = $this->courseid;
-        $eventdata->userid = $this->userid;
-        if (count($this->legacyfiles) > 1) {
-            $eventdata->files = $this->legacyfiles;
-        }
-        $eventdata->file = $this->legacyfiles;
-        $eventdata->pathnamehashes = array_keys($this->legacyfiles);
-        return $eventdata;
-    }
-
-    /**
-     * Return the legacy event name.
-     *
-     * @return string
-     */
-    public static function get_legacy_eventname() {
-        return 'assessable_edusharing_uploaded';
-    }
-
-    /**
      * Return localised event name.
      *
      * @return string
+     * @throws coding_exception
+     * @throws dml_exception
      */
     public static function get_name() {
-        return get_string('eventassessableuploaded', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname'));
+        return get_string(
+            'eventassessableuploaded',
+            'assignsubmission_edusharing',
+            get_config('edusharing', 'application_appname')
+        );
     }
 
     /**
      * Get URL related to the action.
      *
-     * @return \moodle_url
+     * @return moodle_url
+     * @throws moodle_exception
      */
-    public function get_url() {
-        return new \moodle_url('/mod/assign/view.php', array('id' => $this->contextinstanceid));
+    public function get_url(): moodle_url {
+        return new moodle_url('/mod/assign/view.php', ['id' => $this->contextinstanceid]);
     }
 
     /**
@@ -106,7 +88,7 @@ class assessable_uploaded extends \core\event\assessable_uploaded {
      * @param stdClass $legacyfiles legacy event data.
      * @return void
      */
-    public function set_legacy_files($legacyfiles) {
+    public function set_legacy_files($legacyfiles): void {
         $this->legacyfiles = $legacyfiles;
     }
 
@@ -115,12 +97,17 @@ class assessable_uploaded extends \core\event\assessable_uploaded {
      *
      * @return void
      */
-    protected function init() {
+    protected function init(): void {
         parent::init();
         $this->data['objecttable'] = 'assign_submission';
     }
 
-    public static function get_objectid_mapping() {
-        return array('db' => 'assign_submission', 'restore' => 'submission');
+    /**
+     * Function get_objectid_mapping
+     *
+     * @return string[]
+     */
+    public static function get_objectid_mapping(): array {
+        return ['db' => 'assign_submission', 'restore' => 'submission'];
     }
 }

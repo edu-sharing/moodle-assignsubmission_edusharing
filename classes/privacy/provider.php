@@ -18,7 +18,7 @@
  * Privacy class for requesting user data.
  *
  * @package    assignsubmission_edusharing
- * @copyright  2018 Adrian Greeve <adrian@moodle.com>
+ * @copyright  metaVentis GmbH — http://metaventis.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -26,19 +26,19 @@ namespace assignsubmission_edusharing\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
+
 require_once($CFG->dirroot . '/mod/assign/locallib.php');
 
-use \core_privacy\local\metadata\collection;
-use \core_privacy\local\request\writer;
-use \core_privacy\local\request\contextlist;
-use \mod_assign\privacy\assign_plugin_request_data;
+use coding_exception;
+use core_privacy\local\metadata\collection;
+use core_privacy\local\request\writer;
+use core_privacy\local\request\contextlist;
+use dml_exception;
+use mod_assign\privacy\assign_plugin_request_data;
 
 /**
- * Privacy class for requesting user data.
- *
- * @package    assignsubmission_file
- * @copyright  2018 Adrian Greeve <adrian@moodle.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Class provider
  */
 class provider implements
         \core_privacy\local\metadata\provider,
@@ -111,7 +111,7 @@ class provider implements
                 'cmid' => $context->instanceid,
                 'course' => $coursecontext->instanceid,
                 'userid' => $userid,
-                'file' => $file
+                'file' => $file,
             ]);
         }
     }
@@ -119,7 +119,8 @@ class provider implements
     /**
      * Any call to this method should delete all user data for the context defined in the deletion_criteria.
      *
-     * @param  assign_plugin_request_data $requestdata Information useful for deleting user data.
+     * @param assign_plugin_request_data $requestdata Information useful for deleting user data.
+     * @throws dml_exception
      */
     public static function delete_submission_for_context(assign_plugin_request_data $requestdata) {
         global $DB;
@@ -136,7 +137,8 @@ class provider implements
     /**
      * A call to this method should delete user data (where practical) using the userid and submission.
      *
-     * @param  assign_plugin_request_data $deletedata Details about the user and context to focus the deletion.
+     * @param assign_plugin_request_data $deletedata Details about the user and context to focus the deletion.
+     * @throws dml_exception
      */
     public static function delete_submission_for_userid(assign_plugin_request_data $deletedata) {
         global $DB;
@@ -146,10 +148,13 @@ class provider implements
         $submissionid = $deletedata->get_pluginobject()->id;
 
         $fs = get_file_storage();
-        $fs->delete_area_files($deletedata->get_context()->id, 'assignsubmission_edusharing', ASSIGNSUBMISSION_FILE_FILEAREA,
-                $submissionid);
+        $fs->delete_area_files($deletedata->get_context()->id, 'assignsubmission_edusharing',
+            ASSIGNSUBMISSION_FILE_FILEAREA, $submissionid);
 
-        $DB->delete_records('assignsubmission_edusharing', ['assignment' => $deletedata->get_assignid(), 'submission' => $submissionid]);
+        $DB->delete_records(
+            'assignsubmission_edusharing',
+            ['assignment' => $deletedata->get_assignid(), 'submission' => $submissionid]
+        );
     }
 
     /**
@@ -159,7 +164,9 @@ class provider implements
      * - assign object
      * - submission ids (pluginids)
      * - user ids
-     * @param  assign_plugin_request_data $deletedata A class that contains the relevant information required for deletion.
+     * @param assign_plugin_request_data $deletedata A class that contains the relevant information required for deletion.
+     * @throws coding_exception
+     * @throws dml_exception
      */
     public static function delete_submissions(assign_plugin_request_data $deletedata) {
         global $DB;
