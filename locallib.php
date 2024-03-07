@@ -110,8 +110,6 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return bool
      */
     public function save_settings(stdClass $formdata): bool {
-        //$this->set_config('edumaxfilesubmissions', $formdata->assignsubmission_edusharing_maxfiles);
-
         return true;
     }
 
@@ -126,18 +124,14 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @throws dml_exception
      */
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
-        // It's a assign_submission
-        //if ($this->get_config('edumaxfilesubmissions') <= 0) {
-        //    return false;
-        //}
         $existingfilename = '';
-        // if there is one file we are in edit mode!
+        // If there is one file we are in edit mode.
         if ($this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) > 0) {
             $allesfiles = $this->get_es_files($submission);
             $existingfilename = array_keys($allesfiles)[0];
-            $lastSlash = strrpos($existingfilename, '/');
-            if ($lastSlash !== false) {
-                $existingfilename = substr($existingfilename, $lastSlash + 1);
+            $lastslash = strrpos($existingfilename, '/');
+            if ($lastslash !== false) {
+                $existingfilename = substr($existingfilename, $lastslash + 1);
             }
         }
         try {
@@ -154,7 +148,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
 
         $mform->addElement('text', 'edu_edit_mode', 'edit_mode', ['readonly' => 'true']);
         $mform->setType('edu_edit_mode', PARAM_RAW_TRIMMED);
-        // Toggle edit mode
+        // Toggle edit mode.
         $mform->setDefault('edu_edit_mode', $existingfilename !== "" ? 1 : 0);
 
         $mform->addElement('text', 'edu_url',
@@ -292,14 +286,14 @@ class assign_submission_edusharing extends assign_submission_plugin {
         ];
         $searchbutton->updateAttributes($buttonattributes);
 
-        // For edit mode we add a remove es-item button
+        // For edit mode we add a remove es-item button.
         if ($existingfilename !== "") {
-            $removeButton = $mform->addElement('button', 'eduRemoveButton',
+            $removebutton = $mform->addElement('button', 'eduRemoveButton',
                 get_string('remove_es_object', 'assignsubmission_edusharing')
             );
-            $removeOnClick = "window.document.getElementById('id_edu_filename').value = ''; 
+            $removeonclick = "window.document.getElementById('id_edu_filename').value = '';
                 window.document.getElementById('id_edu_url').value = '';";
-            $removeButton->updateAttributes(['onclick' => $removeOnClick]);
+            $removebutton->updateAttributes(['onclick' => $removeonclick]);
         }
 
         return true;
@@ -312,7 +306,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
      */
     private function get_file_options() {
         $fileoptions = ['subdirs'      => 1,
-                        'maxfiles'     => 1, //$this->get_config('edumaxfilesubmissions'),
+                        'maxfiles'     => 1,
                         'return_types' => (FILE_EXTERNAL | FILE_REFERENCE),
             ];
 
@@ -354,7 +348,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
         global $USER, $DB;
 
         // No edu url? This means there is no edu-object to be submitted.
-        // In this case, we do not want an error message
+        // In this case, we do not want an error message.
         if (empty($data->edu_url)) {
             if ((int)$data->edu_edit_mode === 1) {
                 $this->remove($submission);
@@ -393,7 +387,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
             'itemid'    => $submission->id,                         // Usually = ID of row in table.
             'filepath'  => '/',                                     // Any path beginning and ending in /.
             'filename'  => $data->edu_filename,                     // Any filename.
-            'maxfiles'  => 1 //$this->get_config('edumaxfilesubmissions'),
+            'maxfiles'  => 1,
         ];
         $fs          = get_file_storage();
         $utils       = new UtilityFunctions();
