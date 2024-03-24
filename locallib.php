@@ -281,6 +281,11 @@ class assign_submission_edusharing extends assign_submission_plugin {
             return false;
         }
 
+        if (str_ends_with($data->edu_filename, '.php')) {
+            trigger_error("Invalid file type", E_USER_WARNING);
+            return false;
+        }
+
         $edusharingsubmission = $this->get_file_submission($submission->id);
 
         $fileurl = $data->edu_url;
