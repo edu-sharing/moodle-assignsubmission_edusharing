@@ -22,23 +22,23 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'edu-sharing Abgabe';
-$string['edusharing'] = '{$a}';
 $string['countfiles'] = '{$a} Dateien';
 $string['default'] = 'Standardmäßig aktiveren?';
 $string['default_help'] = 'Bei Aktivierung wird die edu-sharing Abgabe für alle Abgaben Standardmäßig aktiviert.';
-$string['enabled'] = 'edu-sharing Abgaben';
-$string['enabled_help'] = 'Bei Aktivierung können Lernende eine, oder mehre Dateien aus edu-sharing für ihre Abgabe hochladen.';
-$string['maxfiles'] = 'Maximale Dateianzahl pro Abgabe';
-$string['maxfiles_help'] = 'Wenn {$a} Abgaben aktiviert sind, können so viele Dateien pro Abgabe angenommen werden.';
-$string['maxfilessubmission'] = '{$a}: Maximale Anzahl an Dateien';
-$string['maxfilessubmission_help'] = 'Wenn {$a} Abgaben aktiviert sind, können Lernende so viele Dateien pro Abgabe hochladen.';
-$string['edu_url'] = '{$a} URL';
-$string['edu_filename'] = '{$a} Dateiname';
-$string['searchrec'] = 'Suche im {$a}-Repositorium ...';
-$string['uploadrec'] = 'Suche im {$a}-Repositorium ...';
-$string['edu_extension_error'] = 'Bitte fügen sie an den Dateinamen die Dateiendung.';
 $string['description'] = '{$a} Abgabe';
 $string['descriptionofsubmission'] = 'Durchsuchen sie das edu-sharing Repositorium für Ihre Abgabe...';
+$string['edusharing'] = '{$a}';
+$string['edu_extension_error'] = 'Bitte fügen sie an den Dateinamen die Dateiendung.';
+$string['edu_filename'] = '{$a} Dateiname';
+$string['edu_url'] = '{$a} URL';
+$string['enabled'] = 'edu-sharing Abgaben';
+$string['enabled_help'] = 'Bei Aktivierung können Lernende eine, oder mehre Dateien aus edu-sharing für ihre Abgabe hochladen.';
 $string['eventassessableuploaded'] = 'Eine {$a} Datei wurde abgegeben';
+$string['maxfiles'] = 'Maximale Dateianzahl pro Abgabe';
+$string['maxfilessubmission'] = '{$a}: Maximale Anzahl an Dateien';
+$string['maxfilessubmission_help'] = 'Wenn {$a} Abgaben aktiviert sind, können Lernende so viele Dateien pro Abgabe hochladen.';
+$string['maxfiles_help'] = 'Wenn {$a} Abgaben aktiviert sind, können so viele Dateien pro Abgabe angenommen werden.';
+$string['pluginname'] = 'edu-sharing Abgabe';
 $string['remove_es_object'] = 'Edu-Sharing-Objekt entfernen';
+$string['searchrec'] = 'Suche im {$a}-Repositorium ...';
+$string['uploadrec'] = 'Suche im {$a}-Repositorium ...';

@@ -22,23 +22,23 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'edu-sharing submissions';
-$string['edusharing'] = '{$a}';
 $string['countfiles'] = '{$a} files';
 $string['default'] = 'Enable by default?';
 $string['default_help'] = 'If set, this submission method will be enabled by default for all new assignments.';
-$string['enabled'] = 'edu-sharing submissions';
-$string['enabled_help'] = 'If enabled, students are able to upload one or more files from edu-sharing as their submission.';
-$string['maxfiles'] = 'Maximum {$a} files per submission';
-$string['maxfiles_help'] = 'If {$a} submissions are enabled, each assignment can be set to accept up to this number of files for their submission.';
-$string['maxfilessubmission'] = '{$a}: Maximum number of uploaded files';
-$string['maxfilessubmission_help'] = 'If {$a} submissions are enabled, each student will be able to upload up to this number of files for their submission.';
-$string['edu_url'] = '{$a} URL';
-$string['edu_filename'] = '{$a} Filename';
-$string['searchrec'] = 'Search the {$a} repository ...';
-$string['uploadrec'] = 'Upload to {$a} repository ...';
-$string['edu_extension_error'] = 'Please add a file-extension';
 $string['description'] = '{$a} Abgabe';
 $string['descriptionofsubmission'] = 'Search the edu-sharing repository for your content...';
+$string['edusharing'] = '{$a}';
+$string['edu_extension_error'] = 'Please add a file-extension';
+$string['edu_filename'] = '{$a} Filename';
+$string['edu_url'] = '{$a} URL';
+$string['enabled'] = 'edu-sharing submissions';
+$string['enabled_help'] = 'If enabled, students are able to upload one or more files from edu-sharing as their submission.';
 $string['eventassessableuploaded'] = 'A {$a} file has been uploaded.';
+$string['maxfiles'] = 'Maximum {$a} files per submission';
+$string['maxfiles_help'] = 'If {$a} submissions are enabled, each assignment can be set to accept up to this number of files for their submission.';$string['maxfilessubmission_help'] = 'If {$a} submissions are enabled, each student will be able to upload up to this number of files for their submission.';
+$string['maxfilessubmission_help'] = 'If {$a} submissions are enabled, each student will be able to upload up to this number of files for their submission.';
+$string['maxfilessubmission'] = '{$a}: Maximum number of uploaded files';
+$string['pluginname'] = 'edu-sharing submissions';
 $string['remove_es_object'] = 'Remove edu-sharing object';
+$string['searchrec'] = 'Search the {$a} repository ...';
+$string['uploadrec'] = 'Upload to {$a} repository ...';
