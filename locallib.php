@@ -126,7 +126,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
         global $PAGE;
         $utils = new UtilityFunctions();
-        $repoTargetChooserEnabled = (bool)$utils->get_config_entry('enable_repo_target_chooser');
+        $repotargetchooserenabled = (bool)$utils->get_config_entry('enable_repo_target_chooser');
         $existingfilename = '';
         // If there is one file we are in edit mode.
         if ($this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) > 0) {
@@ -146,7 +146,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
         }
         $repourl = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
         $PAGE->requires->js_call_amd('assignsubmission_edusharing/EventListeners', 'init', [
-            $repourl, $ticket, $repoTargetChooserEnabled
+            $repourl, $ticket, $repotargetchooserenabled,
         ]);
         $mform->addElement('static', 'description',
             get_string('description', 'assignsubmission_edusharing',
@@ -185,7 +185,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
         if ($existingfilename !== "") {
             $mform->setDefault('edu_filename', $existingfilename);
         }
-        if ($repoTargetChooserEnabled) {
+        if ($repotargetchooserenabled) {
             // phpcs:disable -- just messy html and js.
             $buttongrouphtml = '
                         <div id="eduChooserButtonGroup" class="btn-group" role="group" aria-label="Repository options">
