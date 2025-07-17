@@ -20,9 +20,14 @@
  * @copyright   2024 metaVentis GmbH <http://metaventis.com>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @param       {string} repoUrl
+ * @param       {string} ticket
  */
-export const init = repoUrl => {
-    const onClick = () => {
+export const init = (repoUrl, ticket) => {
+    let isRepoListenerRegistered = false;
+    const applyEventListener = () => {
+        if (isRepoListenerRegistered) {
+            return;
+        }
         window.addEventListener('message', function handleRepo(event) {
             if (event.data.event === 'APPLY_NODE') {
                 const node = event.data.data;
@@ -103,10 +108,53 @@ export const init = repoUrl => {
                 window.removeEventListener('message', handleRepo, false);
             }
         }, false);
-        window.win = window.open(repoUrl);
+        isRepoListenerRegistered = true;
     };
+
+    /**
+     * Function getRepoTargetUrl
+     * @param {Element} element
+     */
+    const getRepoTargetUrl = (element) => {
+        const isSimpleSearchButton = element.id === 'id_searchbutton';
+        if (isSimpleSearchButton) {
+            return repoUrl + '/components/search' + '?reurl=WINDOW&applyDirectories=false&ticket=' + ticket;
+        }
+        const target = element.getAttribute('data-target');
+        let repoTarget;
+        switch (target) {
+            case 'collections':
+                repoTarget = '/components/collections';
+                break;
+            case 'workspace':
+                repoTarget = '/components/workspace/files';
+                break;
+            default:
+                repoTarget = '/components/search';
+        }
+        return repoUrl + repoTarget + '?reurl=WINDOW&applyDirectories=false&ticket=' + ticket;
+    };
+
+    /**
+     * Function onClick
+     * @param {Event}event
+     */
+    const onClick = (event) => {
+        applyEventListener();
+        window.win = window.open(getRepoTargetUrl(event.target));
+    };
+
     const repoButton = document.getElementById('id_searchbutton');
-    repoButton.addEventListener("click", onClick);
+    if (repoButton !== null) {
+        repoButton.addEventListener("click", onClick);
+    }
+    const buttonGroupContainer = document.getElementById('eduChooserButtonGroup');
+    if (buttonGroupContainer !== null) {
+        for (const button of buttonGroupContainer.querySelectorAll('button')) {
+            button.addEventListener("click", onClick);
+        }
+    }
+
     const removeButton = document.getElementById('id_eduRemoveButton');
     if (removeButton !== null) {
         const removeCallback = () => {

@@ -125,6 +125,8 @@ class assign_submission_edusharing extends assign_submission_plugin {
      */
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
         global $PAGE;
+        $utils = new UtilityFunctions();
+        $repoTargetChooserEnabled = (bool)$utils->get_config_entry('enable_repo_target_chooser');
         $existingfilename = '';
         // If there is one file we are in edit mode.
         if ($this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) > 0) {
@@ -142,11 +144,9 @@ class assign_submission_edusharing extends assign_submission_plugin {
             trigger_error($e->getMessage(), E_USER_WARNING);
             return false;
         }
-        $reposearch = trim(
-                get_config('edusharing', 'application_cc_gui_url'), '/'
-            ) . '/components/workspace?&applyDirectories=true&reurl=WINDOW&ticket=' . $ticket;
+        $repourl = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
         $PAGE->requires->js_call_amd('assignsubmission_edusharing/EventListeners', 'init', [
-            $reposearch,
+            $repourl, $ticket, $repoTargetChooserEnabled
         ]);
         $mform->addElement('static', 'description',
             get_string('description', 'assignsubmission_edusharing',
@@ -185,25 +185,37 @@ class assign_submission_edusharing extends assign_submission_plugin {
         if ($existingfilename !== "") {
             $mform->setDefault('edu_filename', $existingfilename);
         }
-
-        $searchbutton     = $mform->addElement(
-            'button',
-            'searchbutton',
-            get_string('searchrec',
-                'assignsubmission_edusharing',
-                get_config('edusharing',
-                    'application_appname')
-            )
-        );
-        $buttonattributes = [
-            'title' => get_string('uploadrec', 'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')),
-        ];
-        $searchbutton->updateAttributes($buttonattributes);
+        if ($repoTargetChooserEnabled) {
+            // phpcs:disable -- just messy html and js.
+            $buttongrouphtml = '
+                        <div id="eduChooserButtonGroup" class="btn-group" role="group" aria-label="Repository options">
+                            <button type="button" class="btn btn-secondary" data-target="search">' . get_string('repoSearch', 'edusharing') . '</button>
+                            <button type="button" class="btn btn-secondary" data-target="workspace">' . get_string('repoWorkspace', 'edusharing') . '</button>
+                            <button type="button" class="btn btn-secondary" data-target="collections">' . get_string('repoCollection', 'edusharing') . '</button>
+                        </div>
+                    ';
+            // phpcs:enable
+            $mform->addElement('static', 'repo_buttons', '', $buttongrouphtml);
+        } else {
+            $searchbutton     = $mform->addElement(
+                'button',
+                'searchbutton',
+                get_string('searchrec',
+                    'assignsubmission_edusharing',
+                    get_config('edusharing',
+                        'application_appname')
+                )
+            );
+            $buttonattributes = [
+                'title' => get_string('uploadrec', 'assignsubmission_edusharing',
+                    get_config('edusharing', 'application_appname')),
+            ];
+            $searchbutton->updateAttributes($buttonattributes);
+        }
 
         // For edit mode we add a remove es-item button.
         if ($existingfilename !== "") {
-            $removebutton = $mform->addElement('button', 'eduRemoveButton',
+            $mform->addElement('button', 'eduRemoveButton',
                 get_string('remove_es_object', 'assignsubmission_edusharing')
             );
         }
