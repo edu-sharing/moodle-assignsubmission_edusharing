@@ -41,9 +41,10 @@ use mod_assign\privacy\assign_plugin_request_data;
  * Class provider
  */
 class provider implements
-    \core_privacy\local\metadata\provider,
     \mod_assign\privacy\assignsubmission_provider,
-    \mod_assign\privacy\assignsubmission_user_provider {
+    \mod_assign\privacy\assignsubmission_user_provider,
+    \core_privacy\local\metadata\provider
+{
     /**
      * Return meta data about this plugin.
      *
