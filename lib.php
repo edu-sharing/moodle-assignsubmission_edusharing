@@ -38,13 +38,15 @@
  * @throws moodle_exception
  * @throws require_login_exception
  */
-function assignsubmission_edusharing_pluginfile($course,
-                                          $cm,
-                                          context $context,
-                                          $filearea,
-                                          $args,
-                                          $forcedownload,
-                                          array $options= []) {
+function assignsubmission_edusharing_pluginfile(
+    $course,
+    $cm,
+    context $context,
+    $filearea,
+    $args,
+    $forcedownload,
+    array $options = []
+) {
     global $DB, $CFG;
 
     if ($context->contextlevel != CONTEXT_MODULE) {
@@ -53,10 +55,12 @@ function assignsubmission_edusharing_pluginfile($course,
 
     require_login($course, false, $cm);
     $itemid = (int)array_shift($args);
-    $record = $DB->get_record('assign_submission',
-                              ['id' => $itemid],
-                              'userid, assignment, groupid',
-                              MUST_EXIST);
+    $record = $DB->get_record(
+        table: 'assign_submission',
+        conditions: ['id' => $itemid],
+        fields: 'userid, assignment, groupid',
+        strictness: MUST_EXIST
+    );
     $userid = $record->userid;
     $groupid = $record->groupid;
 
@@ -68,13 +72,17 @@ function assignsubmission_edusharing_pluginfile($course,
         return false;
     }
 
-    if ($assign->get_instance()->teamsubmission &&
-        !$assign->can_view_group_submission($groupid)) {
+    if (
+        $assign->get_instance()->teamsubmission &&
+        !$assign->can_view_group_submission($groupid)
+    ) {
         return false;
     }
 
-    if (!$assign->get_instance()->teamsubmission &&
-        !$assign->can_view_submission($userid)) {
+    if (
+        !$assign->get_instance()->teamsubmission &&
+        !$assign->can_view_submission($userid)
+    ) {
         return false;
     }
 

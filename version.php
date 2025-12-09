@@ -24,9 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 $plugin->component    = 'assignsubmission_edusharing';
-$plugin->version      = 2025072300;
+$plugin->version      = 2025120900;
 $plugin->requires     = 2022112809;
 $plugin->maturity     = MATURITY_STABLE;
 $plugin->dependencies = ['mod_edusharing' => 2025072300];
-$plugin->release = '10.1.0';
-
+$plugin->release = '10.1.1';

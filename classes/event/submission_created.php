@@ -31,7 +31,6 @@ use core\event\base;
  * Class submission_created
  */
 class submission_created extends \mod_assign\event\submission_created {
-
     /**
      * Init method.
      */

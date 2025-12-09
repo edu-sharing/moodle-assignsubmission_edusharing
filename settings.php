@@ -23,7 +23,11 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-$settings->add(new admin_setting_configcheckbox('assignsubmission_edusharing/default',
-    new lang_string('default', 'assignsubmission_edusharing'),
-    new lang_string('default_help', 'assignsubmission_edusharing'), 0));
-
+$settings->add(
+    new admin_setting_configcheckbox(
+        'assignsubmission_edusharing/default',
+        new lang_string('default', 'assignsubmission_edusharing'),
+        new lang_string('default_help', 'assignsubmission_edusharing'),
+        0
+    )
+);

@@ -28,7 +28,6 @@ namespace assignsubmission_edusharing\event;
  * Class submission_updated
  */
 class submission_updated extends \mod_assign\event\submission_updated {
-
     /**
      * Init method.
      */

@@ -5,15 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [10.1.1] - 2025-12-09
+
+### Fixed
+
+- Updated code style to match current Moodle coding standards
+
 ## [10.1.0] - 2025-07-23
 
-## Added
+### Added
 
 - Button group for repository targets (landing pages)
 
 ## [10.0.0] - 2025-07-14
 
-## Changed
+### Changed
 
 - Bumped the PHP version in the CI pipeline to 8.4
 - Bumped the MYSQL version in the CI pipeline to 9.3.0

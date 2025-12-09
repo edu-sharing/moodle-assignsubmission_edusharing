@@ -41,10 +41,9 @@ use mod_assign\privacy\assign_plugin_request_data;
  * Class provider
  */
 class provider implements
-        \core_privacy\local\metadata\provider,
-        \mod_assign\privacy\assignsubmission_provider,
-        \mod_assign\privacy\assignsubmission_user_provider {
-
+    \core_privacy\local\metadata\provider,
+    \mod_assign\privacy\assignsubmission_provider,
+    \mod_assign\privacy\assignsubmission_user_provider {
     /**
      * Return meta data about this plugin.
      *
@@ -148,8 +147,12 @@ class provider implements
         $submissionid = $deletedata->get_pluginobject()->id;
 
         $fs = get_file_storage();
-        $fs->delete_area_files($deletedata->get_context()->id, 'assignsubmission_edusharing',
-            ASSIGNSUBMISSION_FILE_FILEAREA, $submissionid);
+        $fs->delete_area_files(
+            contextid: $deletedata->get_context()->id,
+            component: 'assignsubmission_edusharing',
+            filearea: ASSIGNSUBMISSION_FILE_FILEAREA,
+            itemid: $submissionid
+        );
 
         $DB->delete_records(
             'assignsubmission_edusharing',
@@ -177,9 +180,14 @@ class provider implements
             return;
         }
         $fs = get_file_storage();
-        list($sql, $params) = $DB->get_in_or_equal($deletedata->get_submissionids(), SQL_PARAMS_NAMED);
-        $fs->delete_area_files_select($deletedata->get_context()->id, 'assignsubmission_edusharing', ASSIGNSUBMISSION_FILE_FILEAREA,
-                $sql, $params);
+        [$sql, $params] = $DB->get_in_or_equal($deletedata->get_submissionids(), SQL_PARAMS_NAMED);
+        $fs->delete_area_files_select(
+            $deletedata->get_context()->id,
+            'assignsubmission_edusharing',
+            ASSIGNSUBMISSION_FILE_FILEAREA,
+            $sql,
+            $params
+        );
 
         $params['assignid'] = $deletedata->get_assignid();
         $DB->delete_records_select('assignsubmission_edusharing', "assignment = :assignid AND submission $sql", $params);

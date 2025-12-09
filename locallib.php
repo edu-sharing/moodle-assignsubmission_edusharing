@@ -42,7 +42,6 @@ define('ASSIGNSUBMISSION_EDUSHARING_FILEAREA', 'submission_edusharing');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class assign_submission_edusharing extends assign_submission_plugin {
-
     /**
      * Get the name of the online text submission plugin
      * @return string
@@ -51,7 +50,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
         try {
             return get_string('edusharing', 'assignsubmission_edusharing', get_config('edusharing', 'application_appname'));
         } catch (Exception $exception) {
-            unset ($exception);
+            unset($exception);
             return '';
         }
     }
@@ -76,7 +75,6 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return void
      */
     public function get_settings(MoodleQuickForm $mform): void {
-        return;
         try {
             if ($this->assignment->has_instance()) {
                 $defaultmaxfilesubmissions = $this->get_config('edumaxfilesubmissions');
@@ -89,12 +87,18 @@ class assign_submission_edusharing extends assign_submission_plugin {
                 $options[$i] = $i;
             }
 
-            $name = get_string('maxfilessubmission', 'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname'));
-            $mform->addElement('select', 'assignsubmission_edusharing_maxfiles', $name, $options);
-            $mform->addHelpButton('assignsubmission_edusharing_maxfiles',
+            $name = get_string(
                 'maxfilessubmission',
-                'assignsubmission_edusharing', get_config('edusharing', 'application_appname'));
+                'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')
+            );
+            $mform->addElement('select', 'assignsubmission_edusharing_maxfiles', $name, $options);
+            $mform->addHelpButton(
+                'assignsubmission_edusharing_maxfiles',
+                'maxfilessubmission',
+                'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')
+            );
         } catch (Exception $exception) {
             debugging($exception->getMessage());
             return;
@@ -148,18 +152,32 @@ class assign_submission_edusharing extends assign_submission_plugin {
         $PAGE->requires->js_call_amd('assignsubmission_edusharing/EventListeners', 'init', [
             $repourl, $ticket, $repotargetchooserenabled,
         ]);
-        $mform->addElement('static', 'description',
-            get_string('description', 'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')), '');
+        $mform->addElement(
+            'static',
+            'description',
+            get_string(
+                'description',
+                'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')
+            ),
+            ''
+        );
 
         $mform->addElement('text', 'edu_edit_mode', 'edit_mode', ['readonly' => 'true']);
         $mform->setType('edu_edit_mode', PARAM_RAW_TRIMMED);
         // Toggle edit mode.
         $mform->setDefault('edu_edit_mode', $existingfilename !== "" ? 1 : 0);
 
-        $mform->addElement('text', 'edu_url',
-            get_string('edu_url', 'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
+        $mform->addElement(
+            'text',
+            'edu_url',
+            get_string(
+                'edu_url',
+                'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')
+            ),
+            ['readonly' => 'true']
+        );
         $mform->setType('edu_url', PARAM_RAW_TRIMMED);
         $mform->addRule('edu_url', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
         $checkextension = function ($val) {
@@ -170,11 +188,19 @@ class assign_submission_edusharing extends assign_submission_plugin {
             return true;
         };
 
-        $mform->addElement('text', 'edu_filename',
-            get_string('edu_filename', 'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')), ['readonly' => 'true']);
+        $mform->addElement(
+            'text',
+            'edu_filename',
+            get_string(
+                'edu_filename',
+                'assignsubmission_edusharing',
+                get_config('edusharing', 'application_appname')
+            ),
+            ['readonly' => 'true']
+        );
         $mform->setType('edu_filename', PARAM_RAW_TRIMMED);
-        $mform->addRule('edu_filename',
+        $mform->addRule(
+            'edu_filename',
             get_string('edu_extension_error', 'assignsubmission_edusharing'),
             'callback',
             $checkextension,
@@ -197,25 +223,33 @@ class assign_submission_edusharing extends assign_submission_plugin {
             // phpcs:enable
             $mform->addElement('static', 'repo_buttons', '', $buttongrouphtml);
         } else {
-            $searchbutton     = $mform->addElement(
+            $searchbutton = $mform->addElement(
                 'button',
                 'searchbutton',
-                get_string('searchrec',
+                get_string(
+                    'searchrec',
                     'assignsubmission_edusharing',
-                    get_config('edusharing',
-                        'application_appname')
+                    get_config(
+                        'edusharing',
+                        'application_appname'
+                    )
                 )
             );
             $buttonattributes = [
-                'title' => get_string('uploadrec', 'assignsubmission_edusharing',
-                    get_config('edusharing', 'application_appname')),
+                'title' => get_string(
+                    'uploadrec',
+                    'assignsubmission_edusharing',
+                    get_config('edusharing', 'application_appname')
+                ),
             ];
             $searchbutton->updateAttributes($buttonattributes);
         }
 
         // For edit mode we add a remove es-item button.
         if ($existingfilename !== "") {
-            $mform->addElement('button', 'eduRemoveButton',
+            $mform->addElement(
+                'button',
+                'eduRemoveButton',
                 get_string('remove_es_object', 'assignsubmission_edusharing')
             );
         }
@@ -247,7 +281,8 @@ class assign_submission_edusharing extends assign_submission_plugin {
      */
     private function count_files($submissionid, $area) {
         $fs    = get_file_storage();
-        $files = $fs->get_area_files($this->assignment->get_context()->id,
+        $files = $fs->get_area_files(
+            $this->assignment->get_context()->id,
             'assignsubmission_edusharing',
             $area,
             $submissionid,
@@ -310,12 +345,12 @@ class assign_submission_edusharing extends assign_submission_plugin {
         $fileurl .= '&onlyDownloadable=true';
 
         $fileinfo = [
-            'contextid' => $this->assignment->get_context()->id,    // ID of the context.
-            'component' => 'assignsubmission_edusharing',           // Your component name.
-            'filearea'  => ASSIGNSUBMISSION_EDUSHARING_FILEAREA,    // Usually = table name.
-            'itemid'    => $submission->id,                         // Usually = ID of row in table.
-            'filepath'  => '/',                                     // Any path beginning and ending in /.
-            'filename'  => $data->edu_filename,                     // Any filename.
+            'contextid' => $this->assignment->get_context()->id,
+            'component' => 'assignsubmission_edusharing',
+            'filearea'  => ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
+            'itemid'    => $submission->id,
+            'filepath'  => '/',
+            'filename'  => $data->edu_filename,
             'maxfiles'  => 1,
         ];
         $fs          = get_file_storage();
@@ -327,12 +362,14 @@ class assign_submission_edusharing extends assign_submission_plugin {
         $fs->create_file_from_url($fileinfo, $fileurl);
 
         $fs    = get_file_storage();
-        $files = $fs->get_area_files($this->assignment->get_context()->id,
+        $files = $fs->get_area_files(
+            $this->assignment->get_context()->id,
             'assignsubmission_edusharing',
             ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
             $submission->id,
             'id',
-            false);
+            false
+        );
 
         $count = $this->count_files($submission->id, ASSIGNSUBMISSION_FILE_FILEAREA);
 
@@ -378,8 +415,10 @@ class assign_submission_edusharing extends assign_submission_plugin {
         ];
 
         if ($edusharingsubmission) {
-            $edusharingsubmission->numfiles = $this->count_files($submission->id,
-                ASSIGNSUBMISSION_EDUSHARING_FILEAREA);
+            $edusharingsubmission->numfiles = $this->count_files(
+                $submission->id,
+                ASSIGNSUBMISSION_EDUSHARING_FILEAREA
+            );
             $updatestatus                   = $DB->update_record('assignsubmission_edusharing', $edusharingsubmission);
             $params['objectid']             = $edusharingsubmission->id;
 
@@ -390,8 +429,10 @@ class assign_submission_edusharing extends assign_submission_plugin {
             return $updatestatus;
         } else {
             $edusharingsubmission             = new stdClass();
-            $edusharingsubmission->numfiles   = $this->count_files($submission->id,
-                ASSIGNSUBMISSION_EDUSHARING_FILEAREA);
+            $edusharingsubmission->numfiles   = $this->count_files(
+                $submission->id,
+                ASSIGNSUBMISSION_EDUSHARING_FILEAREA
+            );
             $edusharingsubmission->submission = $submission->id;
             $edusharingsubmission->assignment = $this->assignment->get_instance()->id;
             $edusharingsubmission->id         = $DB->insert_record('assignsubmission_edusharing', $edusharingsubmission);
@@ -402,7 +443,6 @@ class assign_submission_edusharing extends assign_submission_plugin {
             $event->trigger();
             return $edusharingsubmission->id > 0;
         }
-
     }
 
     /**
@@ -416,10 +456,12 @@ class assign_submission_edusharing extends assign_submission_plugin {
         global $DB;
         $fs = get_file_storage();
 
-        $fs->delete_area_files($this->assignment->get_context()->id,
+        $fs->delete_area_files(
+            $this->assignment->get_context()->id,
             'assignsubmission_edusharing',
             ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
-            $submission->id);
+            $submission->id
+        );
 
         $currentsubmission = $this->get_file_submission($submission->id);
         if ($currentsubmission) {
@@ -449,16 +491,18 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return array
      * @throws coding_exception
      */
-    private function get_es_files(stdClass $submission): Array {
+    private function get_es_files(stdClass $submission): array {
         $result = [];
         $fs     = get_file_storage();
 
-        $files = $fs->get_area_files($this->assignment->get_context()->id,
+        $files = $fs->get_area_files(
+            $this->assignment->get_context()->id,
             'assignsubmission_edusharing',
             ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
             $submission->id,
             'timemodified',
-            false);
+            false
+        );
 
         foreach ($files as $file) {
             // Do we return the full folder path or just the file name?
@@ -484,9 +528,11 @@ class assign_submission_edusharing extends assign_submission_plugin {
         // Show we show a link to view all files for this plugin?
         $showviewlink = $count > ASSIGNSUBMISSION_EDUSHARING_MAXSUMMARYFILES;
         if ($count <= ASSIGNSUBMISSION_EDUSHARING_MAXSUMMARYFILES) {
-            return $this->assignment->render_area_files('assignsubmission_edusharing',
+            return $this->assignment->render_area_files(
+                'assignsubmission_edusharing',
                 ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
-                $submission->id);
+                $submission->id
+            );
         } else {
             return get_string('countfiles', 'assignsubmission_edusharing', $count);
         }
@@ -499,9 +545,11 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return string
      */
     public function view(stdClass $submission) {
-        return $this->assignment->render_area_files('assignsubmission_edusharing',
+        return $this->assignment->render_area_files(
+            'assignsubmission_edusharing',
             ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
-            $submission->id);
+            $submission->id
+        );
     }
 
     /**
@@ -513,8 +561,10 @@ class assign_submission_edusharing extends assign_submission_plugin {
     public function delete_instance() {
         global $DB;
         // Will throw exception on failure.
-        $DB->delete_records('assignsubmission_edusharing',
-            ['assignment' => $this->assignment->get_instance()->id]);
+        $DB->delete_records(
+            'assignsubmission_edusharing',
+            ['assignment' => $this->assignment->get_instance()->id]
+        );
 
         return true;
     }
@@ -569,12 +619,14 @@ class assign_submission_edusharing extends assign_submission_plugin {
         // Copy the files across.
         $contextid = $this->assignment->get_context()->id;
         $fs        = get_file_storage();
-        $files     = $fs->get_area_files($contextid,
+        $files     = $fs->get_area_files(
+            $contextid,
             'assignsubmission_edusharing',
             ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
             $sourcesubmission->id,
             'id',
-            false);
+            false
+        );
         foreach ($files as $file) {
             $fieldupdates = ['itemid' => $destsubmission->id];
             $fs->create_file_from_storedfile($fieldupdates, $file);
