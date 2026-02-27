@@ -1,7 +1,7 @@
 image: moodlehq/moodle-php-apache:8.4
 
 services:
-  - mysql:9.3.0
+  - mysql:9.6.0
   - name: selenium/standalone-chrome:4
     alias: selenium-standalone-chrome
 
@@ -9,7 +9,7 @@ variables:
   DB: "mysqli"
   MYSQL_ALLOW_EMPTY_PASSWORD: "true"
   TRAVIS_BUILD_DIR: "$CI_PROJECT_DIR"
-  MOODLE_BRANCH: "MOODLE_500_STABLE"
+  MOODLE_BRANCH: "MOODLE_501_STABLE"
   # Only needed, when your project is within a group/subgroup of "moodle".
   MOODLE_DIR: "/var/www/html/moodle"
   MOODLE_BEHAT_WDHOST: "http://selenium-standalone-chrome:4444/wd/hub"
@@ -49,7 +49,7 @@ test:
     - cd $MOODLE_DIR
     # - php admin/tool/phpunit/cli/init.php
     # Clone API client into mod_edusharing
-    - cd mod/edusharing/apiClient
+    - cd public/mod/edusharing/apiClient
     - git clone https://github.com/edu-sharing/php-auth-plugin.git
     - cp -a php-auth-plugin/src/. ./src
 
