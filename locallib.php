@@ -141,16 +141,9 @@ class assign_submission_edusharing extends assign_submission_plugin {
                 $existingfilename = substr($existingfilename, $lastslash + 1);
             }
         }
-        try {
-            $service = new EduSharingService();
-            $ticket  = $service->get_ticket();
-        } catch (Exception $e) {
-            trigger_error($e->getMessage(), E_USER_WARNING);
-            return false;
-        }
         $repourl = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
         $PAGE->requires->js_call_amd('assignsubmission_edusharing/EventListeners', 'init', [
-            $repourl, $ticket, $repotargetchooserenabled,
+            $repourl, $repotargetchooserenabled,
         ]);
         $mform->addElement(
             'static',
@@ -178,7 +171,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
             ),
             ['readonly' => 'true']
         );
-        $mform->setType('edu_url', PARAM_RAW_TRIMMED);
+        $mform->setType('edu_url', PARAM_URL);
         $mform->addRule('edu_url', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
         $checkextension = function ($val) {
             $fileparts = pathinfo($val);
@@ -198,7 +191,7 @@ class assign_submission_edusharing extends assign_submission_plugin {
             ),
             ['readonly' => 'true']
         );
-        $mform->setType('edu_filename', PARAM_RAW_TRIMMED);
+        $mform->setType('edu_filename', PARAM_FILE);
         $mform->addRule(
             'edu_filename',
             get_string('edu_extension_error', 'assignsubmission_edusharing'),
@@ -328,14 +321,40 @@ class assign_submission_edusharing extends assign_submission_plugin {
             return false;
         }
 
-        if (str_ends_with($data->edu_filename, '.php')) {
+        $filename = strtolower(trim((string) $data->edu_filename));
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $blockedExtensions = [
+            'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8',
+            'phar', 'phpt', 'pht', 'phtm', 'shtml', 'shtm',
+            'htaccess', 'svg',
+        ];
+
+        if ($extension !== '' && in_array($extension, $blockedExtensions, true)) {
             trigger_error("Invalid file type", E_USER_WARNING);
             return false;
         }
 
         $edusharingsubmission = $this->get_file_submission($submission->id);
 
+        $utils = new UtilityFunctions();
+        $repourl = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
+
         $fileurl = $data->edu_url;
+
+        $repourlparts = parse_url($repourl);
+        $fileurlparts = parse_url($fileurl);
+        if (
+            empty($repourlparts['scheme']) ||
+            empty($repourlparts['host']) ||
+            empty($fileurlparts['scheme']) ||
+            empty($fileurlparts['host']) ||
+            strcasecmp($repourlparts['scheme'], $fileurlparts['scheme']) !== 0 ||
+            strcasecmp($repourlparts['host'], $fileurlparts['host']) !== 0
+        ) {
+            trigger_error("Invalid repo url: $fileurl", E_USER_WARNING);
+            return false;
+        }
+
         if (strpos($fileurl, '?')) {
             $fileurl .= '&ticket=' . $ticket;
         } else {
@@ -354,7 +373,6 @@ class assign_submission_edusharing extends assign_submission_plugin {
             'maxfiles'  => 1,
         ];
         $fs          = get_file_storage();
-        $utils       = new UtilityFunctions();
         $internalurl = $utils->get_internal_url();
         if (!empty($internalurl)) {
             $fileurl = str_replace(rtrim(get_config('edusharing', 'application_cc_gui_url'), '/'), $internalurl, $fileurl);

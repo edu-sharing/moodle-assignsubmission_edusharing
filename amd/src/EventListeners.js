@@ -22,14 +22,18 @@
  * @param       {string} repoUrl
  * @param       {string} ticket
  */
-export const init = (repoUrl, ticket) => {
+
+import {getTicket} from "./repository";
+import {validateOrigin} from 'mod_edusharing/utils';
+
+export const init = async(repoUrl) => {
     let isRepoListenerRegistered = false;
     const applyEventListener = () => {
         if (isRepoListenerRegistered) {
             return;
         }
         window.addEventListener('message', function handleRepo(event) {
-            if (event.data.event === 'APPLY_NODE') {
+            if (event.data.event === 'APPLY_NODE' && validateOrigin(event.origin, repoUrl)) {
                 const node = event.data.data;
                 window.win.close();
                 let filename = node.properties['cm:name'][0];
@@ -115,10 +119,19 @@ export const init = (repoUrl, ticket) => {
      * Function getRepoTargetUrl
      * @param {Element} element
      */
-    const getRepoTargetUrl = (element) => {
+    const getRepoTargetUrl = async(element) => {
+        const ajaxParams = {
+            eduTicketStructure: {
+                courseId: 0
+            }
+        };
+        const ticket = await getTicket(ajaxParams).catch(error => {
+            window.console.error(error);
+            return '';
+        });
         const isSimpleSearchButton = element.id === 'id_searchbutton';
         if (isSimpleSearchButton) {
-            return repoUrl + '/components/search' + '?reurl=WINDOW&applyDirectories=false&ticket=' + ticket;
+            return repoUrl + '/components/search' + '?reurl=WINDOW&applyDirectories=false&ticket=' + ticket.ticket;
         }
         const target = element.getAttribute('data-target');
         let repoTarget;
@@ -132,16 +145,16 @@ export const init = (repoUrl, ticket) => {
             default:
                 repoTarget = '/components/search';
         }
-        return repoUrl + repoTarget + '?reurl=WINDOW&applyDirectories=false&ticket=' + ticket;
+        return repoUrl + repoTarget + '?reurl=WINDOW&applyDirectories=false&ticket=' + ticket.ticket;
     };
 
     /**
      * Function onClick
      * @param {Event}event
      */
-    const onClick = (event) => {
+    const onClick = async(event) => {
         applyEventListener();
-        window.win = window.open(getRepoTargetUrl(event.target));
+        window.win = window.open(await getRepoTargetUrl(event.target));
     };
 
     const repoButton = document.getElementById('id_searchbutton');
