@@ -31,3 +31,13 @@ $settings->add(
         0
     )
 );
+
+$settings->add(
+    new admin_setting_configtext(
+        'assignsubmission_edusharing/maxfiles',
+        new lang_string('maxfiles', 'assignsubmission_edusharing'),
+        new lang_string('maxfiles_help', 'assignsubmission_edusharing'),
+        20,
+        PARAM_INT
+    )
+);

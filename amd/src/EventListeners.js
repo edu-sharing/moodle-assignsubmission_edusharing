@@ -26,7 +26,67 @@
 import {getTicket} from "./repository";
 import {validateOrigin} from 'mod_edusharing/utils';
 
-export const init = async(repoUrl) => {
+export const init = async(repoUrl, repoTargetChooserEnabled, maxFiles) => {
+    const listContainer = document.getElementById('eduObjectList');
+    const dataField = document.getElementById('id_edu_objects');
+    const maxObjects = parseInt(maxFiles, 10) || 1;
+
+    // The currently selected objects, mirrored to the hidden form field as JSON.
+    let objects = [];
+    if (dataField && dataField.value) {
+        try {
+            objects = JSON.parse(dataField.value) || [];
+        } catch (error) {
+            objects = [];
+        }
+    }
+
+    const pickerButtons = [];
+    const atMax = () => objects.length >= maxObjects;
+
+    const syncField = () => {
+        if (dataField) {
+            dataField.value = JSON.stringify(objects);
+        }
+    };
+
+    const updatePickerState = () => {
+        for (const button of pickerButtons) {
+            button.disabled = atMax();
+        }
+    };
+
+    const render = () => {
+        if (!listContainer) {
+            return;
+        }
+        listContainer.innerHTML = '';
+        objects.forEach((object, index) => {
+            const row = document.createElement('div');
+            row.className = 'edu-object-item d-flex align-items-center mb-1';
+
+            const name = document.createElement('span');
+            name.className = 'mr-2';
+            name.textContent = object.filename;
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-link p-0 ml-2';
+            remove.setAttribute('aria-label', 'Remove ' + object.filename);
+            remove.textContent = '✕';
+            remove.addEventListener('click', () => {
+                objects.splice(index, 1);
+                syncField();
+                render();
+            });
+
+            row.appendChild(name);
+            row.appendChild(remove);
+            listContainer.appendChild(row);
+        });
+        updatePickerState();
+    };
+
     let isRepoListenerRegistered = false;
     const applyEventListener = () => {
         if (isRepoListenerRegistered) {
@@ -107,8 +167,11 @@ export const init = async(repoUrl) => {
                         filename += '.' + typeMap[mimeType];
                     }
                 }
-                window.document.getElementById('id_edu_url').value = node.downloadUrl;
-                window.document.getElementById('id_edu_filename').value = filename;
+                if (!atMax()) {
+                    objects.push({url: node.downloadUrl, filename: filename, existing: false});
+                    syncField();
+                    render();
+                }
                 window.removeEventListener('message', handleRepo, false);
             }
         }, false);
@@ -159,22 +222,18 @@ export const init = async(repoUrl) => {
 
     const repoButton = document.getElementById('id_searchbutton');
     if (repoButton !== null) {
+        pickerButtons.push(repoButton);
         repoButton.addEventListener("click", onClick);
     }
     const buttonGroupContainer = document.getElementById('eduChooserButtonGroup');
     if (buttonGroupContainer !== null) {
         for (const button of buttonGroupContainer.querySelectorAll('button')) {
+            pickerButtons.push(button);
             button.addEventListener("click", onClick);
         }
     }
 
-    const removeButton = document.getElementById('id_eduRemoveButton');
-    if (removeButton !== null) {
-        const removeCallback = () => {
-            window.document.getElementById('id_edu_filename').value = '';
-            window.document.getElementById('id_edu_url').value = '';
-        };
-        removeButton.addEventListener("click", removeCallback);
-    }
+    // Render the initial list (existing submission objects) and reflect the max-files state.
+    render();
 };
 

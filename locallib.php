@@ -114,7 +114,24 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return bool
      */
     public function save_settings(stdClass $formdata): bool {
+        $this->set_config('edumaxfilesubmissions', $formdata->assignsubmission_edusharing_maxfiles);
         return true;
+    }
+
+    /**
+     * Maximum number of edu-sharing objects a student may submit for this assignment.
+     *
+     * Falls back to the site-wide default and never returns less than one.
+     *
+     * @return int
+     * @throws dml_exception
+     */
+    private function get_max_file_submissions(): int {
+        $max = (int) $this->get_config('edumaxfilesubmissions');
+        if ($max < 1) {
+            $max = (int) get_config('assignsubmission_edusharing', 'maxfiles');
+        }
+        return max(1, $max);
     }
 
     /**
@@ -130,80 +147,41 @@ class assign_submission_edusharing extends assign_submission_plugin {
     public function get_form_elements($submission, MoodleQuickForm $mform, stdClass $data) {
         global $PAGE;
         $utils = new UtilityFunctions();
+        $appname = get_config('edusharing', 'application_appname');
         $repotargetchooserenabled = (bool)$utils->get_config_entry('enable_repo_target_chooser');
-        $existingfilename = '';
-        // If there is one file we are in edit mode.
-        if ($this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) > 0) {
-            $allesfiles = $this->get_es_files($submission);
-            $existingfilename = array_keys($allesfiles)[0];
-            $lastslash = strrpos($existingfilename, '/');
-            if ($lastslash !== false) {
-                $existingfilename = substr($existingfilename, $lastslash + 1);
-            }
+        $maxfiles = $this->get_max_file_submissions();
+
+        // Build the list of already-submitted objects so the JS can render and manage them.
+        $existing = [];
+        foreach ($this->get_raw_es_files($submission) as $filename => $file) {
+            $existing[] = ['filename' => $filename, 'url' => '', 'existing' => true];
         }
+
         $repourl = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
         $PAGE->requires->js_call_amd('assignsubmission_edusharing/EventListeners', 'init', [
-            $repourl, $repotargetchooserenabled,
+            $repourl, $repotargetchooserenabled, $maxfiles,
         ]);
         $mform->addElement(
             'static',
             'description',
-            get_string(
-                'description',
-                'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')
-            ),
+            get_string('description', 'assignsubmission_edusharing', $appname),
             ''
         );
 
-        $mform->addElement('text', 'edu_edit_mode', 'edit_mode', ['readonly' => 'true']);
-        $mform->setType('edu_edit_mode', PARAM_RAW_TRIMMED);
-        // Toggle edit mode.
-        $mform->setDefault('edu_edit_mode', $existingfilename !== "" ? 1 : 0);
+        // Hidden field carrying the selected objects as JSON. Managed entirely by the JS, which
+        // appends picked objects (up to $maxfiles) and removes them again. An explicit id is set
+        // because hidden elements do not get the auto-generated "id_<name>" the JS relies on.
+        $mform->addElement('hidden', 'edu_objects', json_encode($existing), ['id' => 'id_edu_objects']);
+        $mform->setType('edu_objects', PARAM_RAW);
 
+        // Container the JS renders the selected-objects list into.
         $mform->addElement(
-            'text',
-            'edu_url',
-            get_string(
-                'edu_url',
-                'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')
-            ),
-            ['readonly' => 'true']
+            'static',
+            'edu_object_list',
+            get_string('selectedobjects', 'assignsubmission_edusharing', $appname),
+            '<div id="eduObjectList"></div>'
         );
-        $mform->setType('edu_url', PARAM_URL);
-        $mform->addRule('edu_url', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
-        $checkextension = function ($val) {
-            $fileparts = pathinfo($val);
-            if (empty($fileparts["extension"])) {
-                return false;
-            }
-            return true;
-        };
 
-        $mform->addElement(
-            'text',
-            'edu_filename',
-            get_string(
-                'edu_filename',
-                'assignsubmission_edusharing',
-                get_config('edusharing', 'application_appname')
-            ),
-            ['readonly' => 'true']
-        );
-        $mform->setType('edu_filename', PARAM_FILE);
-        $mform->addRule(
-            'edu_filename',
-            get_string('edu_extension_error', 'assignsubmission_edusharing'),
-            'callback',
-            $checkextension,
-            'server',
-            false,
-            true
-        );
-        if ($existingfilename !== "") {
-            $mform->setDefault('edu_filename', $existingfilename);
-        }
         if ($repotargetchooserenabled) {
             // phpcs:disable -- just messy html and js.
             $buttongrouphtml = '
@@ -219,32 +197,12 @@ class assign_submission_edusharing extends assign_submission_plugin {
             $searchbutton = $mform->addElement(
                 'button',
                 'searchbutton',
-                get_string(
-                    'searchrec',
-                    'assignsubmission_edusharing',
-                    get_config(
-                        'edusharing',
-                        'application_appname'
-                    )
-                )
+                get_string('searchrec', 'assignsubmission_edusharing', $appname)
             );
             $buttonattributes = [
-                'title' => get_string(
-                    'uploadrec',
-                    'assignsubmission_edusharing',
-                    get_config('edusharing', 'application_appname')
-                ),
+                'title' => get_string('uploadrec', 'assignsubmission_edusharing', $appname),
             ];
             $searchbutton->updateAttributes($buttonattributes);
-        }
-
-        // For edit mode we add a remove es-item button.
-        if ($existingfilename !== "") {
-            $mform->addElement(
-                'button',
-                'eduRemoveButton',
-                get_string('remove_es_object', 'assignsubmission_edusharing')
-            );
         }
 
         return true;
@@ -257,11 +215,35 @@ class assign_submission_edusharing extends assign_submission_plugin {
      */
     private function get_file_options() {
         $fileoptions = ['subdirs'      => 1,
-                        'maxfiles'     => 1,
+                        'maxfiles'     => $this->get_max_file_submissions(),
                         'return_types' => (FILE_EXTERNAL | FILE_REFERENCE),
             ];
 
         return $fileoptions;
+    }
+
+    /**
+     * Return the submitted edu-sharing files keyed by file name.
+     *
+     * @param stdClass $submission
+     * @return stored_file[]
+     * @throws coding_exception
+     */
+    private function get_raw_es_files(stdClass $submission): array {
+        $fs    = get_file_storage();
+        $files = $fs->get_area_files(
+            $this->assignment->get_context()->id,
+            'assignsubmission_edusharing',
+            ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
+            $submission->id,
+            'timemodified',
+            false
+        );
+        $result = [];
+        foreach ($files as $file) {
+            $result[$file->get_filename()] = $file;
+        }
+        return $result;
     }
 
     /**
@@ -299,85 +281,54 @@ class assign_submission_edusharing extends assign_submission_plugin {
     public function save(stdClass $submission, stdClass $data) {
         global $USER, $DB;
 
-        // No edu url? This means there is no edu-object to be submitted.
-        // In this case, we do not want an error message.
-        if (empty($data->edu_url)) {
-            if ((int)$data->edu_edit_mode === 1) {
-                $this->remove($submission);
+        $maxfiles = $this->get_max_file_submissions();
+
+        // The form posts back the complete set of selected objects as JSON. Existing objects carry
+        // the "existing" flag, newly picked ones carry a download url.
+        $objects = [];
+        if (!empty($data->edu_objects)) {
+            $decoded = json_decode($data->edu_objects, true);
+            if (is_array($decoded)) {
+                $objects = $decoded;
             }
-            return true;
-        }
-        // If we are in edit mode and the edu_url is not empty, an object from the repo was added.
-        // We have to delete the old one.
-        if ((int)$data->edu_edit_mode === 1) {
-            $this->remove($submission);
         }
 
-        try {
-            $service = new EduSharingService();
-            $ticket  = $service->get_ticket();
-        } catch (Exception $e) {
-            trigger_error($e->getMessage(), E_USER_WARNING);
-            return false;
+        // Remove already-submitted files the student dropped from the list.
+        $keptnames = [];
+        foreach ($objects as $object) {
+            if (!empty($object['existing']) && !empty($object['filename'])) {
+                $keptnames[$object['filename']] = true;
+            }
+        }
+        foreach ($this->get_raw_es_files($submission) as $filename => $file) {
+            if (empty($keptnames[$filename])) {
+                $file->delete();
+            }
         }
 
-        $filename = strtolower(trim((string) $data->edu_filename));
-        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $blockedExtensions = [
-            'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8',
-            'phar', 'phpt', 'pht', 'phtm', 'shtml', 'shtm',
-            'htaccess', 'svg',
-        ];
-
-        if ($extension !== '' && in_array($extension, $blockedExtensions, true)) {
-            trigger_error("Invalid file type", E_USER_WARNING);
-            return false;
+        // Download and store the newly picked objects, up to the configured maximum.
+        $newobjects = array_values(array_filter($objects, function ($object) {
+            return empty($object['existing']) && !empty($object['url']) && !empty($object['filename']);
+        }));
+        if (!empty($newobjects)) {
+            try {
+                $service = new EduSharingService();
+                $ticket  = $service->get_ticket();
+            } catch (Exception $e) {
+                trigger_error($e->getMessage(), E_USER_WARNING);
+                return false;
+            }
+            $utils = new UtilityFunctions();
+            foreach ($newobjects as $object) {
+                if ($this->count_files($submission->id, ASSIGNSUBMISSION_EDUSHARING_FILEAREA) >= $maxfiles) {
+                    trigger_error(get_string('maxfilesreached', 'assignsubmission_edusharing', $maxfiles), E_USER_WARNING);
+                    break;
+                }
+                $this->store_edu_object($submission, (string) $object['url'], (string) $object['filename'], $ticket, $utils);
+            }
         }
 
         $edusharingsubmission = $this->get_file_submission($submission->id);
-
-        $utils = new UtilityFunctions();
-        $repourl = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
-
-        $fileurl = $data->edu_url;
-
-        $repourlparts = parse_url($repourl);
-        $fileurlparts = parse_url($fileurl);
-        if (
-            empty($repourlparts['scheme']) ||
-            empty($repourlparts['host']) ||
-            empty($fileurlparts['scheme']) ||
-            empty($fileurlparts['host']) ||
-            strcasecmp($repourlparts['scheme'], $fileurlparts['scheme']) !== 0 ||
-            strcasecmp($repourlparts['host'], $fileurlparts['host']) !== 0
-        ) {
-            trigger_error("Invalid repo url: $fileurl", E_USER_WARNING);
-            return false;
-        }
-
-        if (strpos($fileurl, '?')) {
-            $fileurl .= '&ticket=' . $ticket;
-        } else {
-            $fileurl .= '?ticket=' . $ticket;
-        }
-
-        $fileurl .= '&onlyDownloadable=true';
-
-        $fileinfo = [
-            'contextid' => $this->assignment->get_context()->id,
-            'component' => 'assignsubmission_edusharing',
-            'filearea'  => ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
-            'itemid'    => $submission->id,
-            'filepath'  => '/',
-            'filename'  => $data->edu_filename,
-            'maxfiles'  => 1,
-        ];
-        $fs          = get_file_storage();
-        $internalurl = $utils->get_internal_url();
-        if (!empty($internalurl)) {
-            $fileurl = str_replace(rtrim(get_config('edusharing', 'application_cc_gui_url'), '/'), $internalurl, $fileurl);
-        }
-        $fs->create_file_from_url($fileinfo, $fileurl);
 
         $fs    = get_file_storage();
         $files = $fs->get_area_files(
@@ -389,7 +340,16 @@ class assign_submission_edusharing extends assign_submission_plugin {
             false
         );
 
-        $count = $this->count_files($submission->id, ASSIGNSUBMISSION_FILE_FILEAREA);
+        $count = count($files);
+
+        // No files left in the submission - keep the bookkeeping record in sync and stop here.
+        if ($count === 0) {
+            if ($edusharingsubmission) {
+                $edusharingsubmission->numfiles = 0;
+                $DB->update_record('assignsubmission_edusharing', $edusharingsubmission);
+            }
+            return true;
+        }
 
         $params = [
             'context'  => context_module::instance($this->assignment->get_course_module()->id),
@@ -461,6 +421,115 @@ class assign_submission_edusharing extends assign_submission_plugin {
             $event->trigger();
             return $edusharingsubmission->id > 0;
         }
+    }
+
+    /**
+     * Download a single edu-sharing object and store it as a submission file.
+     *
+     * Validates the file name and source url, appends the ticket, rewrites the host to the
+     * internal url when one is configured and skips duplicates. Failures are logged and reported
+     * back as false so the remaining objects can still be stored.
+     *
+     * @param stdClass $submission
+     * @param string $url The edu-sharing download url.
+     * @param string $filename
+     * @param string $ticket
+     * @param UtilityFunctions $utils
+     * @return bool true when the file was stored.
+     * @throws coding_exception
+     * @throws dml_exception
+     */
+    private function store_edu_object(
+        stdClass $submission,
+        string $url,
+        string $filename,
+        string $ticket,
+        UtilityFunctions $utils
+    ): bool {
+        $filename = trim($filename);
+        if ($filename === '' || $url === '') {
+            return false;
+        }
+
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if ($extension === '') {
+            trigger_error(get_string('edu_extension_error', 'assignsubmission_edusharing'), E_USER_WARNING);
+            return false;
+        }
+        $blockedextensions = [
+            'php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'php8',
+            'phar', 'phpt', 'pht', 'phtm', 'shtml', 'shtm',
+            'htaccess', 'svg',
+        ];
+        if (in_array($extension, $blockedextensions, true)) {
+            trigger_error("Invalid file type", E_USER_WARNING);
+            return false;
+        }
+
+        $repourl      = trim(get_config('edusharing', 'application_cc_gui_url'), '/');
+        $fileurl      = $url;
+        $repourlparts = parse_url($repourl);
+        $fileurlparts = parse_url($fileurl);
+        if (
+            empty($repourlparts['scheme']) ||
+            empty($repourlparts['host']) ||
+            empty($fileurlparts['scheme']) ||
+            empty($fileurlparts['host']) ||
+            strcasecmp($repourlparts['scheme'], $fileurlparts['scheme']) !== 0 ||
+            strcasecmp($repourlparts['host'], $fileurlparts['host']) !== 0
+        ) {
+            trigger_error("Invalid repo url: $fileurl", E_USER_WARNING);
+            return false;
+        }
+
+        $fileurl .= (strpos($fileurl, '?') ? '&' : '?') . 'ticket=' . $ticket;
+        $fileurl .= '&onlyDownloadable=true';
+
+        $fs = get_file_storage();
+        if ($fs->file_exists(
+            $this->assignment->get_context()->id,
+            'assignsubmission_edusharing',
+            ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
+            $submission->id,
+            '/',
+            $filename
+        )) {
+            // A file with this name is already stored - avoid a duplicate.
+            return false;
+        }
+
+        $internalurl = $utils->get_internal_url();
+        if (!empty($internalurl)) {
+            // Replace the origin (scheme://host:port) of the file url with the internal url's
+            // origin, keeping the path, query and fragment of the original file url intact. Only
+            // the internal origin is used so any context path on the internal url is not duplicated
+            // with the one already present in the file url's path.
+            $fileauthstart = strpos($fileurl, '://') + 3;
+            $filepathstart = $fileauthstart + strcspn($fileurl, '/?#', $fileauthstart);
+
+            $intschemeend   = strpos($internalurl, '://');
+            $internalorigin = $intschemeend === false
+                ? $internalurl
+                : substr($internalurl, 0, ($intschemeend + 3) + strcspn($internalurl, '/?#', $intschemeend + 3));
+
+            $fileurl = $internalorigin . substr($fileurl, $filepathstart);
+        }
+
+        $fileinfo = [
+            'contextid' => $this->assignment->get_context()->id,
+            'component' => 'assignsubmission_edusharing',
+            'filearea'  => ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
+            'itemid'    => $submission->id,
+            'filepath'  => '/',
+            'filename'  => $filename,
+        ];
+        try {
+            $fs->create_file_from_url($fileinfo, $fileurl);
+        } catch (Exception $exception) {
+            trigger_error($exception->getMessage(), E_USER_WARNING);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -606,9 +675,11 @@ class assign_submission_edusharing extends assign_submission_plugin {
      * @return bool
      */
     public function submission_is_empty(stdClass $data) {
-        global $USER;
-
-        return empty($data->edu_url);
+        if (empty($data->edu_objects)) {
+            return true;
+        }
+        $decoded = json_decode($data->edu_objects, true);
+        return !is_array($decoded) || count($decoded) === 0;
     }
 
     /**
