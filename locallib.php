@@ -486,14 +486,16 @@ class assign_submission_edusharing extends assign_submission_plugin {
         $fileurl .= '&onlyDownloadable=true';
 
         $fs = get_file_storage();
-        if ($fs->file_exists(
-            $this->assignment->get_context()->id,
-            'assignsubmission_edusharing',
-            ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
-            $submission->id,
-            '/',
-            $filename
-        )) {
+        if (
+            $fs->file_exists(
+                $this->assignment->get_context()->id,
+                'assignsubmission_edusharing',
+                ASSIGNSUBMISSION_EDUSHARING_FILEAREA,
+                $submission->id,
+                '/',
+                $filename
+            )
+        ) {
             // A file with this name is already stored - avoid a duplicate.
             return false;
         }
