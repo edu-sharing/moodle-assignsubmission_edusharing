@@ -5,6 +5,11 @@ services:
   - name: selenium/standalone-chrome:4
     alias: selenium-standalone-chrome
 
+stages:
+  - test
+  - build
+  - release
+
 variables:
   DB: "mysqli"
   MYSQL_ALLOW_EMPTY_PASSWORD: "true"
@@ -15,8 +20,20 @@ variables:
   MOODLE_BEHAT_WDHOST: "http://selenium-standalone-chrome:4444/wd/hub"
   MOODLE_START_BEHAT_SERVERS: "NO"
   IGNORE_PATHS: "mod/edusharing/apiClient"
+  # Bundle build. When copying the build/release jobs to another plugin repo,
+  # these two values are normally the only thing that needs to change.
+  PLUGIN_DIR_NAME: "edusharing"
+  PLUGIN_COMPONENT: "assignsubmission_edusharing"
+  # Where the release asset link points. "package" uploads the zip to the
+  # generic package registry (permanent URL, needs the Package Registry
+  # enabled). Set to "artifact" to link this pipeline's job artifact instead.
+  RELEASE_ASSET_SOURCE: "package"
+  # Small image used by the build and release jobs. PHP is needed to read
+  # $plugin->release out of version.php and to build the release payload.
+  BUNDLE_IMAGE: "php:8.4-cli-alpine"
 
 test:
+  stage: test
 
   before_script:
     # Update packages and install mysql-client.
@@ -43,7 +60,7 @@ test:
     - chmod u+x ci/bin/*
     - umask u+x
     # install main plugin
-    - moodle-plugin-ci add-plugin edu-sharing/plugin-moodle-edu-sharing
+    - git clone --branch 11.0 --depth 1 https://github.com/edu-sharing/php-auth-plugin.git
     # Install Moodle (omit the --moodle argument if not needed)
     - moodle-plugin-ci install --moodle=$MOODLE_DIR --db-host=mysql --no-init -vvv
     - cd $MOODLE_DIR
@@ -60,3 +77,241 @@ test:
     - moodle-plugin-ci savepoints
     - moodle-plugin-ci grunt
     - moodle-plugin-ci phpdoc
+
+# Builds the installable plugin zip. Replaces the manual buildSubmissionPlugin.sh:
+# the archive has a single "edusharing/" root, which is what Moodle's plugin
+# installer expects under mod/assign/submission.
+build_bundle:
+  stage: build
+  image: $BUNDLE_IMAGE
+  services: []
+  rules:
+    - if: $CI_COMMIT_TAG
+  variables:
+    # Full history, needed to prove the tag is on main.
+    GIT_DEPTH: 0
+  before_script:
+    - apk add --no-cache git zip unzip
+    - git config --global --add safe.directory "$CI_PROJECT_DIR"
+  script:
+    - |
+      set -eu
+
+      VERSION="${CI_COMMIT_TAG#v}"
+      ZIP_NAME="$PLUGIN_COMPONENT-$VERSION.zip"
+
+      echo "== Verifying tag $CI_COMMIT_TAG is on main =="
+      git fetch --quiet origin main
+      git merge-base --is-ancestor "$CI_COMMIT_SHA" FETCH_HEAD \
+        || { echo "Tag $CI_COMMIT_TAG does not point at a commit on main - refusing to release."; exit 1; }
+
+      echo "== Verifying tag matches \$plugin->release =="
+      # version.php guards on MOODLE_INTERNAL and uses Moodle's MATURITY_*
+      # constants, so those have to exist before it can be read outside Moodle.
+      RELEASE=$(php -r '
+        $constants = [
+            "MOODLE_INTERNAL" => 1,
+            "MATURITY_ALPHA"  => 50,
+            "MATURITY_BETA"   => 100,
+            "MATURITY_RC"     => 150,
+            "MATURITY_STABLE" => 200,
+            "ANY_VERSION"     => "any",
+        ];
+        foreach ($constants as $name => $value) {
+            define($name, $value);
+        }
+        $plugin = new stdClass();
+        require "version.php";
+        echo $plugin->release;
+      ')
+      if [ "$RELEASE" != "$VERSION" ]; then
+        echo "Tag $CI_COMMIT_TAG does not match \$plugin->release '$RELEASE' in version.php."
+        echo "Bump version.php (release and version) or fix the tag, then retry."
+        exit 1
+      fi
+      echo "version.php release: $RELEASE"
+
+      echo "== Staging bundle =="
+      STAGE="/tmp/bundle"
+      rm -rf "$STAGE"
+      mkdir -p "$STAGE/$PLUGIN_DIR_NAME"
+
+      # Export the tracked tree at this commit instead of copying the working
+      # directory. That keeps .git and any leftovers from a reused runner
+      # workspace out of the bundle, and makes the content depend only on the tag.
+      git archive --format=tar HEAD | tar -xf - -C "$STAGE/$PLUGIN_DIR_NAME"
+
+      cd "$STAGE/$PLUGIN_DIR_NAME"
+
+      # Tracked VCS / CI metadata that has no place in a release zip.
+      rm -rf .gitignore .gitlab-ci.yml .gitmodules
+
+      echo "== Verifying staged tree =="
+      # The minified AMD bundles are what the submission plugin actually loads,
+      # so an export that lost them would install but silently do nothing.
+      STAGED_AMD=$(find amd/build -name '*.min.js' 2>/dev/null | wc -l)
+      echo "staged amd/build: $STAGED_AMD minified files"
+      if [ "$STAGED_AMD" -eq 0 ]; then
+        echo "Staging produced no amd/build bundles."
+        find . -maxdepth 2 2>&1 | head -40 || true
+        exit 1
+      fi
+
+      echo "== Zipping =="
+      cd "$STAGE"
+      zip -q -r "$CI_PROJECT_DIR/$ZIP_NAME" "$PLUGIN_DIR_NAME"
+      cd "$CI_PROJECT_DIR"
+
+      echo "== Checking archive layout =="
+      # Write the listing to a file and grep that, rather than piping into
+      # "grep -q". GitLab runs job scripts with "set -o pipefail", and grep -q
+      # exits on its first match, which kills unzip with SIGPIPE (141) - so a
+      # piped check reports failure precisely when the pattern DOES match.
+      LISTING="/tmp/archive-listing.txt"
+      unzip -l "$ZIP_NAME" > "$LISTING"
+
+      if ! grep -q " $PLUGIN_DIR_NAME/version.php\$" "$LISTING"; then
+        echo "$ZIP_NAME has no $PLUGIN_DIR_NAME/version.php - wrong archive root?"
+        exit 1
+      fi
+      if ! grep -q "$PLUGIN_DIR_NAME/amd/build/" "$LISTING"; then
+        echo "$ZIP_NAME is missing amd/build, even though staging had $STAGED_AMD bundles."
+        grep -m 20 amd "$LISTING" || echo "(no amd entries at all)"
+        exit 1
+      fi
+      if grep -qE "$PLUGIN_DIR_NAME/\.git" "$LISTING"; then
+        echo "$ZIP_NAME still contains files that should have been stripped."
+        grep -E "$PLUGIN_DIR_NAME/\.git" "$LISTING" || true
+        exit 1
+      fi
+      cat "$LISTING"
+
+      echo "== Preparing release notes =="
+      # Slice the matching section out of the Keep-a-Changelog file, e.g.
+      # everything between "## [11.0.0] - 2026-06-16" and the next "## [".
+      awk -v tag="$VERSION" '
+        $0 ~ "^## \\[" tag "\\]" { found = 1; next }
+        found && /^## \[/ { exit }
+        found { print }
+      ' CHANGELOG.md > notes.md || true
+      if [ ! -s notes.md ]; then
+        echo "No CHANGELOG.md section for $VERSION, using a generic description."
+        printf 'Release %s of %s.\n' "$VERSION" "$PLUGIN_COMPONENT" > notes.md
+      fi
+
+      PACKAGE_URL="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/$PLUGIN_COMPONENT/$VERSION/$ZIP_NAME"
+
+      # Which URL the release asset points at. "package" needs the Package
+      # Registry enabled on the instance; "artifact" works everywhere but ties
+      # the download to this job's artifact.
+      if [ "$RELEASE_ASSET_SOURCE" = "artifact" ]; then
+        ASSET_URL="$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/$ZIP_NAME?job=build_bundle"
+        LINK_TYPE="other"
+      else
+        ASSET_URL="$PACKAGE_URL"
+        LINK_TYPE="package"
+      fi
+      echo "Release asset ($RELEASE_ASSET_SOURCE): $ASSET_URL"
+
+      # Build the Releases API payload here, where PHP is available to do the
+      # JSON escaping of the changelog text.
+      ZIP_NAME="$ZIP_NAME" ASSET_URL="$ASSET_URL" LINK_TYPE="$LINK_TYPE" php -r '
+        $notes = trim((string) @file_get_contents("notes.md"));
+        echo json_encode([
+            "name"        => getenv("CI_COMMIT_TAG"),
+            "tag_name"    => getenv("CI_COMMIT_TAG"),
+            "description" => $notes,
+            "assets"      => ["links" => [[
+                "name"      => getenv("ZIP_NAME"),
+                "url"       => getenv("ASSET_URL"),
+                "link_type" => getenv("LINK_TYPE"),
+            ]]],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+      ' > release.json
+
+      # Hand the computed names to the release job.
+      {
+        echo "ZIP_NAME=$ZIP_NAME"
+        echo "PACKAGE_URL=$PACKAGE_URL"
+      } > build.env
+
+      echo "Built $ZIP_NAME"
+  artifacts:
+    name: "$PLUGIN_COMPONENT-$CI_COMMIT_TAG"
+    paths:
+      - "*.zip"
+      - release.json
+    # Never expire: with RELEASE_ASSET_SOURCE=artifact the release asset link
+    # points here, and even in package mode this is a cheap second copy.
+    expire_in: never
+    reports:
+      dotenv: build.env
+
+# Uploads the zip to the project's generic package registry and creates the
+# GitLab release for the tag, with the package linked as a release asset.
+publish_release:
+  stage: release
+  image: $BUNDLE_IMAGE
+  services: []
+  rules:
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      set -eu
+
+      if [ "$RELEASE_ASSET_SOURCE" = "artifact" ]; then
+        echo "== Skipping package upload (RELEASE_ASSET_SOURCE=artifact) =="
+      else
+
+      echo "== Uploading $ZIP_NAME to the package registry =="
+      STATUS=$(curl --silent --output /tmp/upload-response.txt --write-out '%{http_code}' \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --upload-file "$ZIP_NAME" \
+        "$PACKAGE_URL")
+      echo "HTTP $STATUS"
+      cat /tmp/upload-response.txt 2>/dev/null || true
+      echo
+      case "$STATUS" in
+        20*)
+          ;;
+        403|404)
+          echo "The generic package registry rejected the upload (HTTP $STATUS)."
+          echo "Most likely the Package Registry is disabled for this project or instance."
+          echo "Check:   Settings > General > Visibility, project features, permissions > Packages"
+          echo "Verify:  curl --header \"PRIVATE-TOKEN: <token>\" \"$CI_API_V4_URL/projects/$CI_PROJECT_ID\" | grep -o '\"packages_enabled\":[^,]*'"
+          echo "If it cannot be enabled, set RELEASE_ASSET_SOURCE: \"artifact\" in .gitlab-ci.yml to link the job artifact instead."
+          exit 1
+          ;;
+        *)
+          echo "Unexpected response uploading the package (HTTP $STATUS)."
+          exit 1
+          ;;
+      esac
+
+      fi
+
+      RELEASES_API="$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases"
+
+      # Creating a release that already exists fails with 409, which turns a
+      # harmless job retry into a red pipeline. Check first.
+      STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        "$RELEASES_API/$CI_COMMIT_TAG")
+      if [ "$STATUS" = "200" ]; then
+        echo "Release $CI_COMMIT_TAG already exists; the package was re-uploaded but the release is left untouched."
+        echo "Delete the release under $CI_PROJECT_URL/-/releases if it needs to be recreated."
+        exit 0
+      fi
+
+      echo "== Creating release $CI_COMMIT_TAG =="
+      curl --silent --show-error --fail-with-body \
+        --request POST \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --header "Content-Type: application/json" \
+        --data @release.json \
+        "$RELEASES_API"
+      echo
+
+      echo "Release ready: $CI_PROJECT_URL/-/releases/$CI_COMMIT_TAG"
