@@ -60,14 +60,14 @@ test:
     - chmod u+x ci/bin/*
     - umask u+x
     # install main plugin
-    - git clone --branch 11.0 --depth 1 https://github.com/edu-sharing/php-auth-plugin.git
+    - moodle-plugin-ci add-plugin edu-sharing/plugin-moodle-edu-sharing
     # Install Moodle (omit the --moodle argument if not needed)
     - moodle-plugin-ci install --moodle=$MOODLE_DIR --db-host=mysql --no-init -vvv
     - cd $MOODLE_DIR
     # - php admin/tool/phpunit/cli/init.php
     # Clone API client into mod_edusharing
     - cd public/mod/edusharing/apiClient
-    - git clone https://github.com/edu-sharing/php-auth-plugin.git
+    - git clone --branch 11.0 --depth 1 https://github.com/edu-sharing/php-auth-plugin.git
     - cp -a php-auth-plugin/src/. ./src
 
   script:
